@@ -14,8 +14,14 @@ const {StreamerProvider} = require('../packages/taquito-streamer/dist/lib/taquit
 const { prefix, b58cencode, b58decode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
 
 const CLIENT_DB_PATH = path.join(__dirname, 'client-db');
-const INDEXER_URL = 'https://api.tez.ie/indexer/babylonnet';
-const RPC_URL = 'https://rpcalpha.tzbeta.net/';
+const indexerUrl = {
+  babylonnet: 'https://api.tez.ie/indexer/babylonnet',
+  mainnet: 'https://api.tez.ie/indexer/mainnet'
+};
+const rpcUrl = {
+  babylonnet: 'https://rpcalpha.tzbeta.net/',
+  mainnet: 'https://tezrpc.me'
+};
 
 
 function ensureDirSync(dirpath) {
@@ -33,10 +39,11 @@ db.defaults({ addresses: [] }).write();
 
 program
   .command('address')
-  .action(async () => {
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (options) => {
     Tezos.setProvider({
       signer: new TwoPartySigner(),
-      rpc: RPC_URL
+      rpc: rpcUrl[options.network || 'babylonnet']
     });
     const address = await Tezos.signer.publicKeyHash();
     const share = JSON.parse(await Tezos.signer.secretKey());
@@ -46,22 +53,29 @@ program
 
 program
   .command('balance <address>')
-  .action(async (address) => {
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (address, options) => {
     Tezos.setProvider({
-      rpc: RPC_URL
+      rpc: rpcUrl[options.network || 'babylonnet']
     });
-    const balanceInMutez = await Tezos.tz.getBalance(address);
+    let balanceInMutez;
+    try {
+      balanceInMutez = await Tezos.tz.getBalance(address);
+    } catch (err) {
+      console.error('err =', err);
+    }
     const balanceInXtz = Tezos.format('mutez', 'tz', balanceInMutez);
     console.log(`${balanceInXtz} XTZ`);
   });
 
 program
   .command('transfer <from> <to> <xtz_amount>')
-  .action(async (from, to, xtz_amount) => {
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (from, to, xtz_amount, options) => {
     const { share } = db.get('addresses').find({address: from}).value();
     Tezos.setProvider({
       signer: new TwoPartySigner({party2Share: EcdsaParty2Share.fromPlain(share)}),
-      rpc: RPC_URL
+      rpc: rpcUrl[options.network || 'babylonnet']
     });
     const op = await Tezos.contract.transfer({ to, amount: xtz_amount});
     console.log('op =', op);
@@ -79,10 +93,11 @@ program
 
 program
   .command('history <address>')
-  .action(async (address) => {
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (address, options) => {
     Tezos.setProvider({
-      rpc: RPC_URL,
-      indexer: new IndexerClient(INDEXER_URL)
+      rpc: rpcUrl[options.network || 'babylonnet'],
+      indexer: new IndexerClient(indexerUrl[options.network || 'babylonnet'])
     });
     try {
       console.log(await Tezos.query.balanceHistory(address));
