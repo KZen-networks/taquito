@@ -20,9 +20,8 @@ const indexerUrl = {
 };
 const rpcUrl = {
   babylonnet: 'https://rpcalpha.tzbeta.net/',
-  mainnet: 'https://tezrpc.me'
+  mainnet: 'https://mainnet.tezrpc.me'
 };
-
 
 function ensureDirSync(dirpath) {
   try {
