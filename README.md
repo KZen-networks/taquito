@@ -15,6 +15,16 @@ _This repository is a fork of https://ecadlabs/taquito, and demostrates Two-part
 Server (acts as the co-signer):
 ```
 $ demo/server
+🔧 Configured for production.
+    => address: 0.0.0.0
+    => port: 8000
+    => log: critical
+    => workers: 24
+    => secret key: private-cookies disabled
+    => limits: forms = 32KiB
+    => keep-alive: 5s
+    => tls: disabled
+🚀 Rocket has launched from http://0.0.0.0:8000
 ```
 Client:
 ```
