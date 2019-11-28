@@ -1,6 +1,6 @@
-import sodium from 'libsodium-wrappers';
+const sodium = require('libsodium-wrappers');
 import { b58cencode, b58cdecode, prefix, buf2hex } from '@taquito/utils';
-import toBuffer from 'typedarray-to-buffer';
+const toBuffer = require('typedarray-to-buffer');
 
 /**
  * @description Provide signing logic for ed25519 curve based key (tz1)
@@ -28,6 +28,7 @@ export class Tz1 {
   }
 
   private async init() {
+    // console.log('init(): sodium =', sodium);
     await sodium.ready;
     if (this._key.length !== 64) {
       const { publicKey, privateKey } = sodium.crypto_sign_seed_keypair(
@@ -75,6 +76,7 @@ export class Tz1 {
    */
   async publicKeyHash(): Promise<string> {
     await this.isInit;
+    // console.log('publicKeyHash(): sodium =', sodium);
     await sodium.ready;
     return b58cencode(sodium.crypto_generichash(20, new Uint8Array(this._publicKey)), prefix.tz1);
   }
@@ -84,6 +86,7 @@ export class Tz1 {
    */
   async secretKey(): Promise<string> {
     await this.isInit;
+    // console.log('secretKey(): sodium =', sodium);
     await sodium.ready;
     let key = this._key;
     const { privateKey } = sodium.crypto_sign_seed_keypair(

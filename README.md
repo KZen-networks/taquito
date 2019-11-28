@@ -7,6 +7,31 @@ A TypeScript library suite for development on the Tezos blockchain
 [![codecov](https://codecov.io/gh/ecadlabs/taquito/branch/master/graph/badge.svg)](https://codecov.io/gh/ecadlabs/taquito)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/3204/badge)](https://bestpractices.coreinfrastructure.org/projects/3204)
 
+
+_This repository is a fork of https://ecadlabs/taquito, and demostrates Two-party signing for sending Tezos transactions._
+
+## Demo
+
+Server (acts as the co-signer):
+```
+$ demo/server
+```
+Client:
+```
+$ demo/client --help
+Usage: client [options] [command]
+
+Options:
+  -h, --help                         output usage information
+
+Commands:
+  address
+  balance <address>
+  transfer <from> <to> <xtz_amount>
+  history <address>
+```
+
+---
 _WARNING: This project is in beta. We welcome users and feedback, please be aware that this project is a work in progress._
 
 ## What is Taquito

@@ -58,7 +58,7 @@
     "@storybook/addons": "^5.2.1",
     "@storybook/react": "^5.2.1",
     "@types/jest": "^23.3.2",
-    "@types/node": "^10.14.14",
+    "@types/node": "^10.17.5",
     "@types/react-color": "^3.0.1",
     "@types/recharts": "^1.1.21",
     "@types/storybook__react": "^4.0.2",

@@ -1,0 +1,94 @@
+#!/usr/bin/env node
+
+const program = require('commander');
+const fs = require('fs');
+const path = require('path');
+const low = require('lowdb');
+const FileSync = require('lowdb/adapters/FileSync');
+
+const sodium = require('libsodium-wrappers');
+const { Tezos } = require('../packages/taquito/dist/lib/taquito');
+const { TwoPartySigner, EcdsaParty2Share } = require('../packages/taquito-signer/dist/lib/two-party-signer');
+const { IndexerClient } = require('../packages/taquito-indexer/dist/lib/taquito-indexer');
+const {StreamerProvider} = require('../packages/taquito-streamer/dist/lib/taquito-streamer');
+const { prefix, b58cencode, b58decode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
+
+const CLIENT_DB_PATH = path.join(__dirname, 'client-db');
+const INDEXER_URL = 'https://api.tez.ie/indexer/babylonnet';
+const RPC_URL = 'https://rpcalpha.tzbeta.net/';
+
+
+function ensureDirSync(dirpath) {
+  try {
+    fs.mkdirSync(dirpath, { recursive: true });
+  } catch (err) {
+    if (err.code !== 'EEXIST') throw err;
+  }
+}
+
+ensureDirSync(CLIENT_DB_PATH);
+const adapter = new FileSync(path.join(CLIENT_DB_PATH, 'db.json'));
+const db = low(adapter);
+db.defaults({ addresses: [] }).write();
+
+program
+  .command('address')
+  .action(async () => {
+    Tezos.setProvider({
+      signer: new TwoPartySigner(),
+      rpc: RPC_URL
+    });
+    const address = await Tezos.signer.publicKeyHash();
+    const share = JSON.parse(await Tezos.signer.secretKey());
+    console.log(address);
+    db.get('addresses').push({ address, share }).write();
+  });
+
+program
+  .command('balance <address>')
+  .action(async (address) => {
+    Tezos.setProvider({
+      rpc: RPC_URL
+    });
+    const balanceInMutez = await Tezos.tz.getBalance(address);
+    const balanceInXtz = Tezos.format('mutez', 'tz', balanceInMutez);
+    console.log(`${balanceInXtz} XTZ`);
+  });
+
+program
+  .command('transfer <from> <to> <xtz_amount>')
+  .action(async (from, to, xtz_amount) => {
+    const { share } = db.get('addresses').find({address: from}).value();
+    Tezos.setProvider({
+      signer: new TwoPartySigner({party2Share: EcdsaParty2Share.fromPlain(share)}),
+      rpc: RPC_URL
+    });
+    const op = await Tezos.contract.transfer({ to, amount: xtz_amount});
+    console.log('op =', op);
+    console.log(`hash = ${op.hash}`);
+    console.log(`gas_limit = ${op.results[0].gas_limit}`);
+    console.log(`op.fee = ${Tezos.format('mutez', 'tz', op.results[0].fee)} XTZ`);
+    console.log(`op.amount = ${Tezos.format('mutez', 'tz', op.params.amount)} XTZ`);
+    console.log(`op.source = ${op.results[0].source}`);
+    console.log(`op.destination = ${op.params.destination}`);
+    console.log(`op.metadata = ${JSON.stringify(op.results[0].metadata)}`);
+
+    const id = await op.confirmation();
+    console.log('id =', id);
+  });
+
+program
+  .command('history <address>')
+  .action(async (address) => {
+    Tezos.setProvider({
+      rpc: RPC_URL,
+      indexer: new IndexerClient(INDEXER_URL)
+    });
+    try {
+      console.log(await Tezos.query.balanceHistory(address));
+    } catch (err) {
+      console.error('err =', err);
+    }
+  });
+
+program.parse(process.argv);
