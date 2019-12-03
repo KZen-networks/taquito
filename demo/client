@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+const rp = require('request-promise');
 const program = require('commander');
 const fs = require('fs');
 const path = require('path');
@@ -18,6 +19,10 @@ const indexerUrl = {
   babylonnet: 'https://api.tez.ie/indexer/babylonnet',
   mainnet: 'https://api.tez.ie/indexer/mainnet'
 };
+const explorerApiUrl = {
+  babylonnet: 'https://api.babylonnet.tzstats.com',
+  mainnet: 'https://api.tzstats.com'
+};
 const rpcUrl = {
   babylonnet: 'https://rpcalpha.tzbeta.net/',
   mainnet: 'https://mainnet.tezrpc.me'
@@ -29,6 +34,16 @@ function ensureDirSync(dirpath) {
   } catch (err) {
     if (err.code !== 'EEXIST') throw err;
   }
+}
+
+function logOp(op) {
+  console.log(`hash = ${op.hash}`);
+  console.log(`gas_limit = ${op.results[0].gas_limit}`);
+  console.log(`fee = ${Tezos.format('mutez', 'tz', op.results[0].fee)} XTZ`);
+  console.log(`amount = ${Tezos.format('mutez', 'tz', op.params.amount)} XTZ`);
+  console.log(`source = ${op.results[0].source}`);
+  console.log(`destination = ${op.params.destination}`);
+  console.log(`metadata = ${JSON.stringify(op.results[0].metadata)}`);
 }
 
 ensureDirSync(CLIENT_DB_PATH);
@@ -77,14 +92,7 @@ program
       rpc: rpcUrl[options.network || 'babylonnet']
     });
     const op = await Tezos.contract.transfer({ to, amount: xtz_amount});
-    console.log('op =', op);
-    console.log(`hash = ${op.hash}`);
-    console.log(`gas_limit = ${op.results[0].gas_limit}`);
-    console.log(`op.fee = ${Tezos.format('mutez', 'tz', op.results[0].fee)} XTZ`);
-    console.log(`op.amount = ${Tezos.format('mutez', 'tz', op.params.amount)} XTZ`);
-    console.log(`op.source = ${op.results[0].source}`);
-    console.log(`op.destination = ${op.params.destination}`);
-    console.log(`op.metadata = ${JSON.stringify(op.results[0].metadata)}`);
+    logOp(op);
 
     const id = await op.confirmation();
     console.log('id =', id);
@@ -94,12 +102,69 @@ program
   .command('history <address>')
   .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
   .action(async (address, options) => {
+    try {
+      const response = await rp({
+        method: 'GET',
+        uri: `${explorerApiUrl[options.network || 'babylonnet']}/explorer/account/${address}/op`,
+        json: true
+      });
+      console.log(response);
+    } catch (err) {
+      console.error('err =', err);
+    }
+  });
+
+program
+  .command('originate <address> <xtz_amount>')
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (address, amount, options) => {
+    const { share } = db.get('addresses').find({address}).value();
     Tezos.setProvider({
-      rpc: rpcUrl[options.network || 'babylonnet'],
-      indexer: new IndexerClient(indexerUrl[options.network || 'babylonnet'])
+      signer: new TwoPartySigner({party2Share: EcdsaParty2Share.fromPlain(share)}),
+      rpc: rpcUrl[options.network || 'babylonnet']
     });
     try {
-      console.log(await Tezos.query.balanceHistory(address));
+      const op = await Tezos.contract.originate({
+        code: `parameter string;
+        storage string;
+        code {CAR;
+              PUSH string "Hello ";
+              CONCAT;
+              NIL operation; PAIR};
+        `,
+        balance: amount,
+        spendable: true,
+        delegatable: true,
+        delegate: null,
+        init: `"test"`
+      });
+      logOp(op);
+      const id = await op.confirmation();
+      console.log('id =', id);
+    } catch (err) {
+      console.error('err =', err);
+    }
+  });
+
+program
+  .command('delegate <manager> <from> <to>')
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (manager, from, to, options) => {
+    const { share } = db.get('addresses').find({address: manager}).value();
+    Tezos.setProvider({
+      signer: new TwoPartySigner({party2Share: EcdsaParty2Share.fromPlain(share)}),
+      rpc: rpcUrl[options.network || 'babylonnet']
+    });
+    try {
+      /* 'setDelegate' instead of 'registerDelegate' because the former allows custom source and delegate.
+         'registerDelegate' takes the source and delegate as the signer's address ("manager" param here). */
+      const op = await Tezos.contract.setDelegate({
+        source: from,
+        delegate: to
+      });
+      logOp(op);
+      const id = await op.confirmation();
+      console.log('id =', id);
     } catch (err) {
       console.error('err =', err);
     }

@@ -96,6 +96,7 @@
     "@kzen-networks/thresh-sig": "^0.3.7",
     "commander": "^4.0.1",
     "libsodium-wrappers": "^0.7.6",
-    "lowdb": "^1.0.0"
+    "lowdb": "^1.0.0",
+    "request-promise": "^4.2.5"
   }
 }
