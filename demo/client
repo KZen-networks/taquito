@@ -187,4 +187,24 @@ program
     }
   });
 
+program
+  .command('subscribe <address>')
+  .description('Subscribe to get notifications regarding operations involving given address')
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (address, options) => {
+    const rpc = rpcUrl[options.network || 'babylonnet'];
+    console.log('rpc =', rpc);
+    Tezos.setProvider({
+      stream: rpc,
+      rpc
+    });
+    try {
+      const subscription = Tezos.stream.subscribeOperation([{source: address}, {destination: address}]);
+      subscription.on('data', data => console.log('on("data") = ', data));
+      subscription.on('error', error => console.error('on("error") = ', error));
+    } catch (err) {
+      console.error('err =', err);
+    }
+  });
+
 program.parse(process.argv);
