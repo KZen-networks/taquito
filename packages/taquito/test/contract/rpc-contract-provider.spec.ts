@@ -13,6 +13,8 @@ import BigNumber from 'bignumber.js';
 import { Context } from '../../src/context';
 import { LegacyContractMethod, ContractMethod } from '../../src/contract/contract';
 import { Estimate } from '../../src/contract/estimate';
+import { Protocols } from '../../src/constants';
+import { InvalidDelegationSource } from '../../src/contract/errors';
 
 /**
  * RPCContractProvider test
@@ -43,6 +45,8 @@ describe('RpcContractProvider test', () => {
   let mockEstimate: {
     originate: jest.Mock<any, any>;
     transfer: jest.Mock<any, any>;
+    setDelegate: jest.Mock<any, any>;
+    registerDelegate: jest.Mock<any, any>;
   };
 
   const revealOp = (source: string) => ({
@@ -80,6 +84,8 @@ describe('RpcContractProvider test', () => {
     mockEstimate = {
       originate: jest.fn(),
       transfer: jest.fn(),
+      registerDelegate: jest.fn(),
+      setDelegate: jest.fn(),
     };
 
     // Required for operations confirmation polling
@@ -472,6 +478,8 @@ describe('RpcContractProvider test', () => {
 
   describe('setDelegate', () => {
     it('should produce a reveal and delegation operation', async done => {
+      const estimate = new Estimate(1000, 1000, 180);
+      mockEstimate.setDelegate.mockResolvedValue(estimate);
       const result = await rpcContractProvider.setDelegate({
         source: 'test_source',
         delegate: 'test_delegate',
@@ -481,18 +489,72 @@ describe('RpcContractProvider test', () => {
         opOb: {
           branch: 'test',
           contents: [
-            revealOp('test_source'),
+            revealOp('test_pub_key_hash'),
             {
               delegate: 'test_delegate',
               counter: '2',
-              fee: '1000',
-              gas_limit: '10600',
+              fee: '490',
+              gas_limit: '1100',
               kind: 'delegation',
               source: 'test_source',
-              storage_limit: '0',
+              storage_limit: '1000',
             },
           ],
           protocol: 'test_proto',
+          signature: 'test_sig',
+        },
+        opbytes: 'test',
+      });
+      done();
+    });
+
+    it('should throw InvalidDelegationSource when setting a KT1 address in babylon', async done => {
+      const estimate = new Estimate(1000, 1000, 180);
+      mockEstimate.setDelegate.mockResolvedValue(estimate);
+      mockRpcClient.getBlockMetadata.mockResolvedValue({
+        next_protocol: Protocols.PsBabyM1,
+      });
+      let error;
+      try {
+        await rpcContractProvider.setDelegate({
+          source: 'KT1EM2LvxxFGB3Svh9p9HCP2jEEYyHjABMbK',
+          delegate: 'tz1eY5Aqa1kXDFoiebL28emyXFoneAoVg1zh',
+        });
+      } catch (ex) {
+        error = ex;
+      }
+      expect(error).toBeInstanceOf(InvalidDelegationSource);
+      done();
+    });
+
+    it('should accept KT1 address in athens', async done => {
+      const estimate = new Estimate(1000, 1000, 180);
+      mockEstimate.setDelegate.mockResolvedValue(estimate);
+      mockRpcClient.getBlockMetadata.mockResolvedValue({
+        next_protocol: Protocols.Pt24m4xi,
+      });
+
+      const result = await rpcContractProvider.setDelegate({
+        source: 'KT1EM2LvxxFGB3Svh9p9HCP2jEEYyHjABMbK',
+        delegate: 'tz1eY5Aqa1kXDFoiebL28emyXFoneAoVg1zh',
+      });
+      expect(result.raw).toEqual({
+        counter: 0,
+        opOb: {
+          branch: 'test',
+          contents: [
+            revealOp('test_pub_key_hash'),
+            {
+              delegate: 'tz1eY5Aqa1kXDFoiebL28emyXFoneAoVg1zh',
+              counter: '2',
+              fee: '490',
+              gas_limit: '1100',
+              kind: 'delegation',
+              source: 'KT1EM2LvxxFGB3Svh9p9HCP2jEEYyHjABMbK',
+              storage_limit: '1000',
+            },
+          ],
+          protocol: 'Pt24m4xiPbLDhVgVfABUjirbmda3yohdN82Sp9FeuAXJ4eV9otd',
           signature: 'test_sig',
         },
         opbytes: 'test',
@@ -503,6 +565,8 @@ describe('RpcContractProvider test', () => {
 
   describe('registerDelegate', () => {
     it('should produce a reveal and delegation operation', async done => {
+      const estimate = new Estimate(1000, 1000, 180);
+      mockEstimate.registerDelegate.mockResolvedValue(estimate);
       const result = await rpcContractProvider.registerDelegate({});
       expect(result.raw).toEqual({
         counter: 0,
@@ -513,11 +577,11 @@ describe('RpcContractProvider test', () => {
             {
               delegate: 'test_pub_key_hash',
               counter: '2',
-              fee: '1000',
-              gas_limit: '10600',
+              fee: '490',
+              gas_limit: '1100',
               kind: 'delegation',
               source: 'test_pub_key_hash',
-              storage_limit: '0',
+              storage_limit: '1000',
             },
           ],
           protocol: 'test_proto',

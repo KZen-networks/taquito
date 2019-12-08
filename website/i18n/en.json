@@ -14,8 +14,14 @@
       "making_transfers": {
         "title": "Making Transfers"
       },
+      "originate": {
+        "title": "Originating Contracts"
+      },
       "quick_start": {
         "title": "Quick start"
+      },
+      "set_delegate": {
+        "title": "Set delegate"
       },
       "tezbridge_signer": {
         "title": "TezBridge Signer"

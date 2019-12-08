@@ -3,7 +3,9 @@
     "General": [
       "quick_start",
       "boilerplate",
-      "making_transfers"
+      "making_transfers",
+      "originate",
+      "set_delegate"
     ],
     "Signer": [
       "inmemory_signer",

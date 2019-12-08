@@ -1,4 +1,3 @@
-import { SubscribeProvider } from '@taquito/taquito';
 import WS from 'ws';
 
 const DEFAULT_STREAMER_URL = 'wss://api.tez.ie/streamer/mainnet/subscribe';
@@ -84,7 +83,7 @@ export class Subscription {
   }
 }
 
-export class StreamerProvider implements SubscribeProvider {
+export class StreamerProvider {
   constructor(private url: string = DEFAULT_STREAMER_URL) {}
 
   subscribe(_filter: 'head'): Subscription {
