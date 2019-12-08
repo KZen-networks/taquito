@@ -100,12 +100,29 @@ program
 
 program
   .command('history <address>')
-  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .option('-n, --network <name>', 'Name of network ("babylonnet" (default) or "mainnet")')
+  .option('-t, --type <name>', 'Type of operations to filter by ("transaction" | "reveal" | "origination")')
+  .option('-l, --limit <number>', 'Number of operations to show (default 20)')
+  .option('-o, --offset <number>', 'Offset for an operations page (default 0)')
+  .option('-r, --order <direction>', 'Order of operations ("asc" (default) | "desc")')
+  .option('-s, --since <number>', 'List all operations since given block number')
+  .option('-b, --block <number>', 'List all operations only within a given block number')
   .action(async (address, options) => {
+    function calcQueryString() {
+      const optionNames = ['type', 'limit', 'offset', 'order', 'since', 'block'];
+      return optionNames.reduce((prev, curr) => {
+        const currentPair = options[curr] ? `${curr}=${options[curr]}` : '';
+        const currDelimiter = currentPair ? (prev ? `&` : `?`) : '';
+        return `${prev}${currDelimiter}${currentPair}`;
+      }, '');
+    }
+
     try {
+      const network = options.network || 'babylonnet';
+      const qs = calcQueryString();
       const response = await rp({
         method: 'GET',
-        uri: `${explorerApiUrl[options.network || 'babylonnet']}/explorer/account/${address}/op`,
+        uri: `${explorerApiUrl[network]}/explorer/account/${address}/op${qs}`,
         json: true
       });
       console.log(response);
