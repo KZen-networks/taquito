@@ -91,11 +91,15 @@ program
       signer: new TwoPartySigner({party2Share: EcdsaParty2Share.fromPlain(share)}),
       rpc: rpcUrl[options.network || 'babylonnet']
     });
-    const op = await Tezos.contract.transfer({ to, amount: xtz_amount});
-    logOp(op);
+    try {
+      const op = await Tezos.contract.transfer({ to, amount: xtz_amount});
+      logOp(op);
 
-    const id = await op.confirmation();
-    console.log('id =', id);
+      const id = await op.confirmation();
+      console.log('id =', id);
+    } catch (err) {
+      console.error('err =', err);
+    }
   });
 
 program
