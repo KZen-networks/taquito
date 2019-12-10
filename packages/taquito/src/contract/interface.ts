@@ -7,6 +7,8 @@ import {
   OriginateParams,
   TransferParams,
   RegisterDelegateParams,
+  ForgedBytes,
+  RPCTransferOperation,
 } from '../operations/types';
 import { Contract } from './contract';
 import { Estimate } from './estimate';
@@ -121,6 +123,7 @@ export interface ContractProvider {
    * @param RegisterDelegate operation parameter
    */
   registerDelegate(params: DelegateParams): Promise<DelegateOperation>;
+
   /**
    *
    * @description Transfer tz from current address to a specific address. Will sign and inject an operation using the current context
@@ -130,5 +133,31 @@ export interface ContractProvider {
    * @param Transfer operation parameter
    */
   transfer(params: TransferParams): Promise<TransactionOperation>;
+
+  /**
+   *
+   * @description Get relevant parameters for later signing and broadcast of a transfer transaction
+   *
+   * @returns GetTransferSignatureHashResponse parameters needed to sign and broadcast
+   *
+   * @param params transfer parameters
+   */
+  getTransferSignatureHash(params: TransferParams): Promise<ForgedBytes>;
+
+  /**
+   *
+   * @description Transfer tz from current address to a specific address. Will sign and inject an operation using the current context
+   *
+   * @returns An operation handle with the result from the rpc node
+   *
+   * @param params result of `getTransferSignatureHash`
+   * @param prefixSig the prefix to be used for the encoding of the signature bytes
+   * @param sbytes signature bytes in hex
+   */
+  signAndBroadcast(
+    params: ForgedBytes,
+    prefixSig: string,
+    sbytes: string
+  ): Promise<TransactionOperation>;
   at(address: string, schema?: ContractSchema): Promise<Contract>;
 }

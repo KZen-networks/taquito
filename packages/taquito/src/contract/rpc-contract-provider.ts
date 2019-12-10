@@ -1,5 +1,5 @@
 import { Schema } from '@taquito/michelson-encoder';
-import { ScriptResponse } from '@taquito/rpc';
+import { ConstructedOperation, ScriptResponse } from '@taquito/rpc';
 import { DEFAULT_FEE, DEFAULT_GAS_LIMIT, DEFAULT_STORAGE_LIMIT, protocols } from '../constants';
 import { Context } from '../context';
 import { OperationEmitter } from '../operations/operation-emitter';
@@ -11,6 +11,7 @@ import {
   RPCDelegateOperation,
   TransferParams,
   RegisterDelegateParams,
+  ForgedBytes,
 } from '../operations/types';
 import { Contract } from './contract';
 import { Estimate } from './estimate';
@@ -22,7 +23,7 @@ import {
   createRegisterDelegateOperation,
 } from './prepare';
 import { smartContractAbstractionSemantic } from './semantic';
-import { encodeExpr } from '@taquito/utils';
+import { encodeExpr, hex2buf, mergebuf, b58cencode, prefix } from '@taquito/utils';
 import { TransactionOperation } from '../operations/transaction-operation';
 import { DelegateOperation } from '../operations/delegate-operation';
 import { InvalidDelegationSource } from './errors';
@@ -240,6 +241,58 @@ export class RpcContractProvider extends OperationEmitter implements ContractPro
     return new TransactionOperation(hash, operation, source, forgedBytes, opResponse, context);
   }
 
+  /**
+   *
+   * @description Get relevant parameters for later signing and broadcast of a transfer transaction
+   *
+   * @returns GetTransferSignatureHashResponse parameters needed to sign and broadcast
+   *
+   * @param params operation parameters
+   */
+  async getTransferSignatureHash(params: TransferParams): Promise<ForgedBytes> {
+    const estimate = await this.estimate(params, this.estimator.transfer.bind(this.estimator));
+    const operation = await createTransferOperation({
+      ...params,
+      ...estimate,
+    });
+    const source = params.source || (await this.signer.publicKeyHash());
+    return this.prepareAndForge({ operation, source });
+  }
+
+  /**
+   *
+   * @description Transfer tz from current address to a specific address. Will sign and inject an operation using the current context
+   *
+   * @returns An operation handle with the result from the rpc node
+   *
+   * @param params result of `getTransferSignatureHash`
+   * @param prefixSig the prefix to be used for the encoding of the signature bytes
+   * @param sbytes signature bytes in hex
+   */
+  async signAndBroadcast(
+    params: ForgedBytes,
+    prefixSig: string,
+    sbytes: string
+  ): Promise<TransactionOperation> {
+    const { hash, context, forgedBytes, opResponse } = await this.inject(params, prefixSig, sbytes);
+    if (!params.opOb.contents || params.opOb.contents.length !== 1) {
+      console.log('params =', JSON.stringify(params, null, 2));
+      throw Error('Invalid operation object contents');
+    }
+
+    const operation = await createTransferOperation(
+      constructedOperationToTransferParams(params.opOb.contents[0])
+    );
+    return new TransactionOperation(
+      hash,
+      operation,
+      params.opOb.contents[0].source,
+      forgedBytes,
+      opResponse,
+      context
+    );
+  }
+
   async at(address: string): Promise<Contract> {
     // We need to check if Proto5 is activated to pick the right smart contract abstraction
     if (await this.context.isAnyProtocolActive(protocols['005'])) {
@@ -251,4 +304,18 @@ export class RpcContractProvider extends OperationEmitter implements ContractPro
       return new Contract(address, script, this);
     }
   }
+}
+
+function constructedOperationToTransferParams(op: ConstructedOperation): TransferParams {
+  return {
+    to: op.destination,
+    // @ts-ignore
+    amount: Number(op.amount),
+    parameter: op.parameters,
+    // @ts-ignore
+    fee: Number(op.fee),
+    gasLimit: Number(op.gas_limit),
+    storageLimit: Number(op.storage_limit),
+    ...op,
+  };
 }

@@ -91,5 +91,8 @@
     "extends": [
       "@commitlint/config-conventional"
     ]
+  },
+  "dependencies": {
+    "lowdb": "^1.0.0"
   }
 }

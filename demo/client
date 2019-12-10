@@ -1,0 +1,104 @@
+#!/usr/bin/env node
+
+const crypto = require('crypto');
+const program = require('commander');
+const fs = require('fs');
+const path = require('path');
+const low = require('lowdb');
+const FileSync = require('lowdb/adapters/FileSync');
+
+const { InMemorySigner } = require('../packages/taquito-signer/dist/lib/taquito-signer');
+
+const { Tezos } = require('../packages/taquito/dist/lib/taquito');
+const { prefix, b58cencode, b58decode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
+
+const CLIENT_DB_PATH = path.join(__dirname, 'client-db');
+
+const rpcUrl = {
+  babylonnet: 'https://rpcalpha.tzbeta.net/',
+  mainnet: 'https://mainnet.tezrpc.me'
+};
+
+function ensureDirSync(dirpath) {
+  try {
+    fs.mkdirSync(dirpath, { recursive: true });
+  } catch (err) {
+    if (err.code !== 'EEXIST') throw err;
+  }
+}
+
+function logOp(op) {
+  console.log(`hash = ${op.hash}`);
+  console.log(`gas_limit = ${op.results[0].gas_limit}`);
+  console.log(`fee = ${Tezos.format('mutez', 'tz', op.results[0].fee)} XTZ`);
+  console.log(`amount = ${Tezos.format('mutez', 'tz', op.params.amount)} XTZ`);
+  console.log(`source = ${op.results[0].source}`);
+  console.log(`destination = ${op.params.destination}`);
+  console.log(`metadata = ${JSON.stringify(op.results[0].metadata)}`);
+}
+
+ensureDirSync(CLIENT_DB_PATH);
+const adapter = new FileSync(path.join(CLIENT_DB_PATH, 'db.json'));
+const db = low(adapter);
+db.defaults({ addresses: [] }).write();
+
+program
+  .command('address')
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (options) => {
+    const privateKeyHex = crypto.randomBytes(32).toString('hex');
+    console.log('privateKeyHex =', privateKeyHex);
+    const privateKey = b58cencode(privateKeyHex, prefix['spsk']);
+    console.log('privateKey =', privateKey);
+    Tezos.setProvider({
+      signer: new InMemorySigner(privateKey),
+      rpc: rpcUrl[options.network || 'babylonnet']
+    });
+    const address = await Tezos.signer.publicKeyHash();
+    console.log(address);
+    db.get('addresses').push({ address, privateKey }).write();
+  });
+
+program
+  .command('balance <address>')
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (address, options) => {
+    Tezos.setProvider({
+      rpc: rpcUrl[options.network || 'babylonnet']
+    });
+    let balanceInMutez;
+    try {
+      balanceInMutez = await Tezos.tz.getBalance(address);
+    } catch (err) {
+      console.error('err =', err);
+    }
+    const balanceInXtz = Tezos.format('mutez', 'tz', balanceInMutez);
+    console.log(`${balanceInXtz} XTZ`);
+  });
+
+
+program
+  .command('transfer <from> <to> <xtz_amount>')
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (from, to, xtz_amount, options) => {
+    const { privateKey } = db.get('addresses').find({address: from}).value();
+    Tezos.setProvider({
+      signer: new InMemorySigner(privateKey),
+      rpc: rpcUrl[options.network || 'babylonnet']
+    });
+    try {
+      const forgedBytes = await Tezos.contract.getTransferSignatureHash({ to, amount: xtz_amount});
+      const {prefixSig, sbytes} = await Tezos.signer.sign(forgedBytes.opbytes, new Uint8Array([3]));
+      console.log('prefixSig =', prefixSig);
+      console.log('sbytes =', sbytes);
+      const op = await Tezos.contract.signAndBroadcast(forgedBytes, prefixSig, sbytes);
+      logOp(op);
+
+      const id = await op.confirmation();
+      console.log('id =', id);
+    } catch (err) {
+      console.error('err =', err);
+    }
+  });
+
+program.parse(process.argv);

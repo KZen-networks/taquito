@@ -1,7 +1,7 @@
-import sodium from 'libsodium-wrappers';
+const sodium = require('libsodium-wrappers');
 import { b58cencode, b58cdecode, prefix, buf2hex } from '@taquito/utils';
-import toBuffer from 'typedarray-to-buffer';
-import elliptic from 'elliptic';
+const toBuffer = require('typedarray-to-buffer');
+const elliptic = require('elliptic');
 
 const pref = {
   p256: {
