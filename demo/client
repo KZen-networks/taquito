@@ -203,7 +203,7 @@ program
       rpc
     });
     try {
-      const subscription = Tezos.stream.subscribeOperation([{source: address}, {destination: address}]);
+      const subscription = Tezos.stream.subscribeOperation([{or: [{source: address}, {destination: address}]}]);
       subscription.on('data', data => console.log('on("data") = ', data));
       subscription.on('error', error => console.error('on("error") = ', error));
     } catch (err) {
