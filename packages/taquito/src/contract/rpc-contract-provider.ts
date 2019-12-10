@@ -11,6 +11,8 @@ import {
   RPCDelegateOperation,
   TransferParams,
   RegisterDelegateParams,
+  ForgedBytes,
+  RPCTransferOperation,
 } from '../operations/types';
 import { Contract } from './contract';
 import { Estimate } from './estimate';
@@ -26,6 +28,11 @@ import { encodeExpr } from '@taquito/utils';
 import { TransactionOperation } from '../operations/transaction-operation';
 import { DelegateOperation } from '../operations/delegate-operation';
 import { InvalidDelegationSource } from './errors';
+
+export interface GetTransferSignatureHashResponse extends ForgedBytes {
+  operation: RPCTransferOperation;
+  source: string;
+}
 
 export class RpcContractProvider extends OperationEmitter implements ContractProvider {
   constructor(context: Context, private estimator: EstimationProvider) {
@@ -238,6 +245,51 @@ export class RpcContractProvider extends OperationEmitter implements ContractPro
     const opBytes = await this.prepareAndForge({ operation, source: params.source });
     const { hash, context, forgedBytes, opResponse } = await this.signAndInject(opBytes);
     return new TransactionOperation(hash, operation, source, forgedBytes, opResponse, context);
+  }
+
+  /**
+   *
+   * @description Get relevant parameters for later signing and broadcast of a transfer transaction
+   *
+   * @returns GetTransferSignatureHashResponse parameters needed to sign and broadcast
+   *
+   * @param TransferParams operation parameters
+   */
+  async getTransferSignatureHash(
+    params: TransferParams
+  ): Promise<GetTransferSignatureHashResponse> {
+    const estimate = await this.estimate(params, this.estimator.transfer.bind(this.estimator));
+    const operation = await createTransferOperation({
+      ...params,
+      ...estimate,
+    });
+    const source = params.source || (await this.signer.publicKeyHash());
+    const forgedBytes = await this.prepareAndForge({ operation, source: params.source });
+    return {
+      operation,
+      source,
+      ...forgedBytes,
+    };
+  }
+
+  /**
+   *
+   * @description Transfer tz from current address to a specific address. Will sign and inject an operation using the current context
+   *
+   * @returns An operation handle with the result from the rpc node
+   *
+   * @param params result of `getTransferSignatureHash`
+   */
+  async signAndBroadcast(params: GetTransferSignatureHashResponse): Promise<TransactionOperation> {
+    const { hash, context, forgedBytes, opResponse } = await this.signAndInject(params);
+    return new TransactionOperation(
+      hash,
+      params.operation,
+      params.source,
+      forgedBytes,
+      opResponse,
+      context
+    );
   }
 
   async at(address: string): Promise<Contract> {

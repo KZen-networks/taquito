@@ -9,9 +9,10 @@ const FileSync = require('lowdb/adapters/FileSync');
 
 const sodium = require('libsodium-wrappers');
 const { Tezos } = require('../packages/taquito/dist/lib/taquito');
+const { RpcContractProvider } = require('../packages/taquito/dist/lib/contract/rpc-contract-provider');
 const { TwoPartySigner, EcdsaParty2Share } = require('../packages/taquito-signer/dist/lib/two-party-signer');
 const { IndexerClient } = require('../packages/taquito-indexer/dist/lib/taquito-indexer');
-const {StreamerProvider} = require('../packages/taquito-streamer/dist/lib/taquito-streamer');
+const { StreamerProvider } = require('../packages/taquito-streamer/dist/lib/taquito-streamer');
 const { prefix, b58cencode, b58decode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
 
 const CLIENT_DB_PATH = path.join(__dirname, 'client-db');
@@ -92,7 +93,13 @@ program
       rpc: rpcUrl[options.network || 'babylonnet']
     });
     try {
-      const op = await Tezos.contract.transfer({ to, amount: xtz_amount});
+      // const op = await Tezos.contract.transfer({ to, amount: xtz_amount});
+
+      const unsignedOp = await Tezos.contract.getTransferSignatureHash({to, amount: xtz_amount});
+      console.log('unsignedOp =', unsignedOp);
+
+      const op = await Tezos.contract.signAndBroadcast(unsignedOp);
+
       logOp(op);
 
       const id = await op.confirmation();

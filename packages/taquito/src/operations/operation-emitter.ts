@@ -231,6 +231,7 @@ export abstract class OperationEmitter {
   }
 
   protected async signAndInject(forgedBytes: ForgedBytes) {
+    console.log('signAndInject: forgedBytes =', JSON.stringify(forgedBytes, null, 2));
     const signed = await this.signer.sign(forgedBytes.opbytes, new Uint8Array([3]));
     forgedBytes.opbytes = signed.sbytes;
     forgedBytes.opOb.signature = signed.prefixSig;
