@@ -28,13 +28,65 @@ function ensureDirSync(dirpath) {
 }
 
 function logOp(op) {
+  /* When an operation is from a fresh address (i.e. that hasn't sent yet), it includes two results - 'reveal' and 'transaction'.
+   *
+   * Example as viewed in https://babylonnet.tzstats.com/opT57vGYVLssoFntRMzurUGCn6xUGkQKDYoVHTsZDkwpP4UdKwK :
+   *
+   * TransactionOperation {
+      hash: 'opT57vGYVLssoFntRMzurUGCn6xUGkQKDYoVHTsZDkwpP4UdKwK',
+      raw:
+       { opbytes:
+          '5b329629c3a6983b045522638fd96abef3de38b91f21d0b9b6c1a0e2c8539eb36b018bff89a463cfcbfb888609c533798bb02937b5be8c0bb0dd08e852ac0201038248829f1ed123b3f859df0ed8fbddf02bb2da9a2d5f303f366859587220f5266c018bff89a463cfcbfb888609c533798bb02937b5beec0ab1dd08c350ac02a08d06000192586940eed7475af41cb746060c57fc91fafda700af6e012721916bf43a217dd9a1990232976bf5ba050278fcf691a2ab28c631dc531e88f977978564cac5248598cc95fc7e30588cbb076df977dbf907d41fb922',
+         opOb:
+          { branch: 'BLQSrbq14i1PkEMRMvRp7yKYLuXUtH5yHd12pzJB6KAEFJj1vXc',
+            contents: [Array],
+            protocol: 'PsBabyM1eUXZseaJdmXFApDSBqj8YBfwELoxZHHW77EMcAbbwAS',
+            signature:
+             'spsig1Um9DuRxcVPSY6xQzng95ZhbS76XRZgG32xvzqypS5kbfJZh45ceKCNA5krtHgHgA41zyG4HEqedBGWweUjAWAQ5bV3m5y' },
+         counter: 143023 },
+      results:
+       [ { kind: 'reveal',
+           source: 'tz2M5Ui4xNtunJywkdpa5JYcX6LCZySbxJFR',
+           fee: '1420',
+           counter: '143024',
+           gas_limit: '10600',
+           storage_limit: '300',
+           public_key: 'sppk7cEkwcib2wbKwpywZBVzcGsbtdFXohhAXMCSWhhRipxDbvdPsFQ',
+           metadata: [Object] },
+         { kind: 'transaction',
+           source: 'tz2M5Ui4xNtunJywkdpa5JYcX6LCZySbxJFR',
+           fee: '1388',
+           counter: '143025',
+           gas_limit: '10307',
+           storage_limit: '300',
+           amount: '100000',
+           destination: 'tz2Mf3EFuVEyyz1osU6yc9XoBFnpZubWiSDP',
+           metadata: [Object] } ],
+      params:
+       { kind: 'transaction',
+         fee: 1388,
+         gas_limit: 10307,
+         storage_limit: 300,
+         amount: '100000',
+         destination: 'tz2Mf3EFuVEyyz1osU6yc9XoBFnpZubWiSDP' },
+      source: 'tz2M5Ui4xNtunJywkdpa5JYcX6LCZySbxJFR' }
+   */
+
+  function sumFieldValues(fieldName) {
+    return op.results.reduce((sum, currResult) => {
+      return sum + parseInt(currResult[fieldName]);
+    }, 0);
+  }
+
+  const transactionResult = op.results.find(res => res.kind === 'transaction');
+
   console.log(`hash = ${op.hash}`);
-  console.log(`gas_limit = ${op.results[0].gas_limit}`);
-  console.log(`fee = ${Tezos.format('mutez', 'tz', op.results[0].fee)} XTZ`);
-  console.log(`amount = ${Tezos.format('mutez', 'tz', op.params.amount)} XTZ`);
-  console.log(`source = ${op.results[0].source}`);
+  console.log(`gas_limit = ${sumFieldValues('gas_limit')}`);
+  console.log(`fee = ${Tezos.format('mutez', 'tz', sumFieldValues('fee'))} XTZ`);
+  console.log(`amount = ${Tezos.format('mutez', 'tz', transactionResult.amount)} XTZ`);
   console.log(`destination = ${op.params.destination}`);
-  console.log(`metadata = ${JSON.stringify(op.results[0].metadata)}`);
+  console.log(`source = ${transactionResult.source}`);
+  console.log(`metadata = ${JSON.stringify(transactionResult.metadata)}`);
 }
 
 ensureDirSync(CLIENT_DB_PATH);
@@ -87,7 +139,9 @@ program
       rpc: rpcUrl[options.network || 'babylonnet']
     });
     try {
+      console.log('#1');
       const forgedBytes = await Tezos.contract.getTransferSignatureHash({ to, amount: xtz_amount});
+      console.log('forgedBytes =', JSON.stringify(forgedBytes, null, 2));
       const {prefixSig, sbytes} = await Tezos.signer.sign(forgedBytes.opbytes, new Uint8Array([3]));
       console.log('prefixSig =', prefixSig);
       console.log('sbytes =', sbytes);
@@ -100,5 +154,26 @@ program
       console.error('err =', err);
     }
   });
+
+program
+  .command('subscribe <address>')
+  .description('Subscribe to get notifications regarding operations involving given address')
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (address, options) => {
+    const rpc = rpcUrl[options.network || 'babylonnet'];
+    console.log('rpc =', rpc);
+    Tezos.setProvider({
+      stream: rpc,
+      rpc
+    });
+    try {
+      const subscription = Tezos.stream.subscribeOperation([{or: [{source: address}, {destination: address}]}]);
+      subscription.on('data', data => console.log('on("data") = ', data));
+      subscription.on('error', error => console.error('on("error") = ', error));
+    } catch (err) {
+      console.error('err =', err);
+    }
+  });
+
 
 program.parse(process.argv);
