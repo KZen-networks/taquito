@@ -1,5 +1,4 @@
 {
-  "name": "taquito",
   "version": "0.1.0",
   "scripts": {
     "build": "lerna run build",
