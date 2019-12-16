@@ -7,9 +7,9 @@
     "blockchain",
     "signer"
   ],
-  "main": "dist/taquito-signer.umd.js",
-  "module": "dist/taquito-signer.es5.js",
-  "typings": "dist/types/taquito-signer.d.ts",
+  "main": "dist/index.umd.js",
+  "module": "dist/index.es5.js",
+  "typings": "dist/types/index.d.ts",
   "files": [
     "dist"
   ],

@@ -7,7 +7,7 @@ const path = require('path');
 const low = require('lowdb');
 const FileSync = require('lowdb/adapters/FileSync');
 
-const { InMemorySigner } = require('../packages/taquito-signer/dist/lib/taquito-signer');
+const { InMemorySigner, PublicOnlySigner } = require('../packages/taquito-signer/dist/lib');
 
 const { Tezos } = require('../packages/taquito/dist/lib/taquito');
 const { prefix, b58cencode, b58decode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
@@ -140,6 +140,7 @@ program
     });
     try {
       console.log('#1');
+      console.log('publicKey =', Tezos.signer.publicKey());
       const forgedBytes = await Tezos.contract.getTransferSignatureHash({ to, amount: xtz_amount});
       console.log('forgedBytes =', JSON.stringify(forgedBytes, null, 2));
       const {prefixSig, sbytes} = await Tezos.signer.sign(forgedBytes.opbytes, new Uint8Array([3]));
@@ -150,6 +151,25 @@ program
 
       const id = await op.confirmation();
       console.log('id =', id);
+    } catch (err) {
+      console.error('err =', err);
+    }
+  });
+
+program
+  .command('get-transfer-hash <from_x> <from_y> <to> <xtz_amount>')
+  .alias('gth')
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (fromX, fromY, to, xtz_amount, options) => {
+    const publicKey = {x: fromX, y: fromY};
+    Tezos.setProvider({
+      signer: new PublicOnlySigner(publicKey),
+      rpc: rpcUrl[options.network || 'babylonnet']
+    });
+    try {
+      console.log('#1');
+      const forgedBytes = await Tezos.contract.getTransferSignatureHash({ to, amount: xtz_amount});
+      console.log('forgedBytes =', JSON.stringify(forgedBytes, null, 2));
     } catch (err) {
       console.error('err =', err);
     }
