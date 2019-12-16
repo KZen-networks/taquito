@@ -78,15 +78,25 @@ function logOp(op) {
     }, 0);
   }
 
-  const transactionResult = op.results.find(res => res.kind === 'transaction');
-
   console.log(`hash = ${op.hash}`);
   console.log(`gas_limit = ${sumFieldValues('gas_limit')}`);
   console.log(`fee = ${Tezos.format('mutez', 'tz', sumFieldValues('fee'))} XTZ`);
-  console.log(`amount = ${Tezos.format('mutez', 'tz', transactionResult.amount)} XTZ`);
-  console.log(`destination = ${op.params.destination}`);
-  console.log(`source = ${transactionResult.source}`);
-  console.log(`metadata = ${JSON.stringify(transactionResult.metadata)}`);
+  const transactionResult = op.results.find(res => res.kind === 'transaction');
+  if (transactionResult) {
+    console.log('--transaction--');
+    console.log(`source = ${transactionResult.source}`);
+    console.log(`amount = ${Tezos.format('mutez', 'tz', transactionResult.amount)} XTZ`);
+    console.log(`destination = ${transactionResult.destination}`);
+    console.log(`metadata = ${JSON.stringify(transactionResult.metadata)}`);
+  } else {
+    const delegateResult = op.results.find(res => res.kind === 'delegation');
+    if (delegateResult) {
+      console.log('--delegation--');
+      console.log(`source = ${delegateResult.source}`);
+      console.log(`delegate = ${delegateResult.delegate}`);
+      console.log(`metadata = ${JSON.stringify(delegateResult.metadata)}`);
+    }
+  }
 }
 
 ensureDirSync(CLIENT_DB_PATH);
@@ -140,13 +150,12 @@ program
     });
     try {
       console.log('#1');
-      console.log('publicKey =', Tezos.signer.publicKey());
       const forgedBytes = await Tezos.contract.getTransferSignatureHash({ to, amount: xtz_amount});
       console.log('forgedBytes =', JSON.stringify(forgedBytes, null, 2));
       const {prefixSig, sbytes} = await Tezos.signer.sign(forgedBytes.opbytes, new Uint8Array([3]));
       console.log('prefixSig =', prefixSig);
       console.log('sbytes =', sbytes);
-      const op = await Tezos.contract.signAndBroadcast(forgedBytes, prefixSig, sbytes);
+      const op = await Tezos.contract.injectTransferSignatureAndBroadcast(forgedBytes, prefixSig, sbytes);
       logOp(op);
 
       const id = await op.confirmation();
@@ -170,6 +179,32 @@ program
       console.log('#1');
       const forgedBytes = await Tezos.contract.getTransferSignatureHash({ to, amount: xtz_amount});
       console.log('forgedBytes =', JSON.stringify(forgedBytes, null, 2));
+    } catch (err) {
+      console.error('err =', err);
+    }
+  });
+
+program
+  .command('delegate <from> <to>')
+  .description('Delegate funds to a baker account')
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (from, to, options) => {
+    const { privateKey } = db.get('addresses').find({address: from}).value();
+    Tezos.setProvider({
+      signer: new InMemorySigner(privateKey),
+      rpc: rpcUrl[options.network || 'babylonnet']
+    });
+    try {
+      const forgedBytes = await Tezos.contract.getDelegateSignatureHash({source: from, delegate: to});
+      console.log('forgedBytes =', forgedBytes);
+      const {prefixSig, sbytes} = await Tezos.signer.sign(forgedBytes.opbytes, new Uint8Array([3]));
+      console.log('prefixSig =', prefixSig);
+      console.log('sbytes =', sbytes);
+      const op = await Tezos.contract.injectDelegateSignatureAndBroadcast(forgedBytes, prefixSig, sbytes);
+      logOp(op);
+
+      const id = await op.confirmation();
+      console.log('id =', id);
     } catch (err) {
       console.error('err =', err);
     }
