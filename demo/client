@@ -10,7 +10,7 @@ const FileSync = require('lowdb/adapters/FileSync');
 const { InMemorySigner, PublicOnlySigner } = require('../packages/taquito-signer/dist/lib');
 
 const { Tezos } = require('../packages/taquito/dist/lib/taquito');
-const { prefix, b58cencode, b58decode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
+const { prefix, b58cencode, b58cdecode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
 
 const CLIENT_DB_PATH = path.join(__dirname, 'client-db');
 
@@ -227,6 +227,31 @@ program
       subscription.on('error', error => console.error('on("error") = ', error));
     } catch (err) {
       console.error('err =', err);
+    }
+  });
+
+program
+  .command('validate <address>')
+  .alias('v')
+  .description('Validate given string is a valid Tezos address')
+  .action(async (address) => {
+    try {
+      function logValid(isValid) {
+        console.log(`${address} is ${isValid ? 'a valid' : 'an invalid'} Tezos address.`);
+      }
+
+      let pref = address.substring(0, 3);
+      if (!['tz1', 'tz2', 'tz3'].includes(pref)) {
+        pref = address.substring(0, 2);
+        if (pref !== 'KT') {
+          return logValid(false);
+        }
+      }
+
+      b58cdecode(address, prefix[pref]);
+      logValid(true);
+    } catch (err) {
+      logValid(false);
     }
   });
 
