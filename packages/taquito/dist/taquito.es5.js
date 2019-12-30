@@ -1477,17 +1477,24 @@ var RpcContractProvider = /** @class */ (function (_super) {
                         calculatedFee = fee;
                         calculatedGas = gasLimit;
                         calculatedStorage = storageLimit;
+                        console.log('calculatedFee =', calculatedFee);
+                        console.log('calculatedGas =', calculatedGas);
+                        console.log('calculatedStorage =', calculatedStorage);
                         if (!(fee === undefined || gasLimit === undefined || storageLimit === undefined)) return [3 /*break*/, 2];
+                        console.log('undefineds');
                         return [4 /*yield*/, estimator(__assign({ fee: fee, gasLimit: gasLimit, storageLimit: storageLimit }, rest))];
                     case 1:
                         estimation = _b.sent();
                         if (calculatedFee === undefined) {
+                            console.log('estimation.suggestedFeeMutez =', estimation.suggestedFeeMutez);
                             calculatedFee = estimation.suggestedFeeMutez;
                         }
                         if (calculatedGas === undefined) {
+                            console.log('estimation.gasLimit =', estimation.gasLimit);
                             calculatedGas = estimation.gasLimit;
                         }
                         if (calculatedStorage === undefined) {
+                            console.log('estimation.storageLimit =', estimation.storageLimit);
                             calculatedStorage = estimation.storageLimit;
                         }
                         _b.label = 2;
@@ -1705,7 +1712,7 @@ var RpcContractProvider = /** @class */ (function (_super) {
             var estimate, operation, source, _a, opBytes, _b, hash, context, forgedBytes, opResponse;
             return __generator(this, function (_c) {
                 switch (_c.label) {
-                    case 0: return [4 /*yield*/, this.estimate(params, this.estimator.transfer.bind(this.estimator))];
+                    case 0: return [4 /*yield*/, this.estimate(params, this.estimator.transfer.bind(this.estimator, params))];
                     case 1:
                         estimate = _c.sent();
                         return [4 /*yield*/, createTransferOperation(__assign(__assign({}, params), estimate))];
@@ -1746,9 +1753,11 @@ var RpcContractProvider = /** @class */ (function (_super) {
                     case 0: return [4 /*yield*/, this.estimate(params, this.estimator.transfer.bind(this.estimator))];
                     case 1:
                         estimate = _b.sent();
+                        console.log('getTransferSignatureHash: estimate =', estimate);
                         return [4 /*yield*/, createTransferOperation(__assign(__assign({}, params), estimate))];
                     case 2:
                         operation = _b.sent();
+                        console.log('getTransferSignatureHash: operation =', operation);
                         _a = params.source;
                         if (_a) return [3 /*break*/, 4];
                         return [4 /*yield*/, this.signer.publicKeyHash()];
@@ -1965,7 +1974,11 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
             var _a, opbytes, _b, branch, contents, operation, _c, opResponse, operationResults, totalGas, totalStorage;
             return __generator(this, function (_d) {
                 switch (_d.label) {
-                    case 0: return [4 /*yield*/, this.prepareAndForge(params)];
+                    case 0:
+                        console.log('createEstimate: defaultStorage =', defaultStorage);
+                        console.log('createEstimate: params =', params);
+                        console.log('createEstimate: params.operation =', params.operation);
+                        return [4 /*yield*/, this.prepareAndForge(params)];
                     case 1:
                         _a = _d.sent(), opbytes = _a.opbytes, _b = _a.opOb, branch = _b.branch, contents = _b.contents;
                         operation = { branch: branch, contents: contents, signature: SIGNATURE_STUB };
@@ -1980,7 +1993,9 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
                     case 4: return [4 /*yield*/, this.simulate(operation)];
                     case 5:
                         opResponse = (_d.sent()).opResponse;
+                        console.log('createEstimate: opResponse =', opResponse);
                         operationResults = this.getOperationResult(opResponse, kind);
+                        console.log('createEstimate: operationResults =', JSON.stringify(operationResults, null, 2));
                         totalGas = 0;
                         totalStorage = 0;
                         operationResults.forEach(function (result) {
@@ -2035,10 +2050,13 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
                     case 0: return [4 /*yield*/, this.signer.publicKeyHash()];
                     case 1:
                         pkh = _b.sent();
+                        console.log('rpc-estimate-provider: transfer: fee =', fee);
+                        console.log('rpc-estimate-provider: transfer: storageLimit =', storageLimit);
+                        console.log('rpc-estimate-provider: transfer: gasLimit =', gasLimit);
                         return [4 /*yield*/, createTransferOperation(__assign(__assign({}, rest), this.DEFAULT_PARAMS))];
                     case 2:
                         op = _b.sent();
-                        return [2 /*return*/, this.createEstimate({ operation: op, source: pkh }, 'transaction', DEFAULT_STORAGE_LIMIT.TRANSFER)];
+                        return [2 /*return*/, this.createEstimate({ operation: op, source: pkh }, 'transaction', typeof storageLimit === 'number' ? storageLimit : DEFAULT_STORAGE_LIMIT.TRANSFER)];
                 }
             });
         });

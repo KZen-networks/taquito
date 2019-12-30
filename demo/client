@@ -14,6 +14,7 @@ const { Tezos } = require('../packages/taquito/dist/lib/taquito');
 const { prefix, b58cencode, b58cdecode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
 
 const CLIENT_DB_PATH = path.join(__dirname, 'client-db');
+const MINIMUM_FEE_BUFFER_MTZ = 28.8;
 
 const explorerApiUrl = {
   babylonnet: 'https://api.babylonnet.tzstats.com',
@@ -187,7 +188,7 @@ program
       const balanceInMutez = await Tezos.tz.getBalance(from);
       console.log('balanceInMutez =', balanceInMutez.toString());
 
-      // 2. mock with fake amount (in order to get the gas fee)
+      // 2. mock with fake amount (in order to calculate the gas fee)
       const mockMutezAmount = balanceInMutez.div(2).decimalPlaces(0).toNumber();
       console.log('mockMutezAmount =', mockMutezAmount);
       const forgedBytes = await Tezos.contract.getTransferSignatureHash({ to, amount: mockMutezAmount, mutez: true });
@@ -198,21 +199,25 @@ program
       console.log('totalFee =', totalFee);
 
       // 3. calculate storage limit to burn (0 if destination is active)
-      // const isDestinationActive = await isAddressActive(to, network);
-      // const totalStorageLimit = isDestinationActive ?
-      //   0 :
-      //   forgedBytes.opOb.contents.reduce((acc, currContent) => {
-      //     return acc + parseInt(currContent.storage_limit);
-      //   }, 0);
-      const totalStorageLimit = forgedBytes.opOb.contents.reduce((acc, currContent) => {
-        return acc + parseInt(currContent.storage_limit);
-      }, 0);
+      const shouldUseZeroStorage = await isAddressActive(to, network);
+      console.log('shouldUseZeroStorage =', shouldUseZeroStorage);
+      const totalStorageLimit = shouldUseZeroStorage ?
+        0 :
+        forgedBytes.opOb.contents.reduce((acc, currContent) => {
+          return acc + parseInt(currContent.storage_limit);
+        }, 0);
       console.log('totalStorageLimit =', totalStorageLimit);
 
       // 4. construct the new transaction with the entire balance minus the fees
-      const mutezAmount = balanceInMutez.minus(totalFee + totalStorageLimit * 1000).toNumber();  // totalFee in mutez (1e-6), totalStorageLimit in millitez (1e-3)
+      const mutezAmount = balanceInMutez.minus(totalFee + Math.max(MINIMUM_FEE_BUFFER_MTZ, totalStorageLimit) * 1000).toNumber();  // totalFee in mutez (1e-6), totalStorageLimit in millitez (1e-3)
       console.log('mutezAmount =', mutezAmount);
-      const newForgedBytes = await Tezos.contract.getTransferSignatureHash({ to, amount: mutezAmount, mutez: true });
+      const rest = shouldUseZeroStorage ? { storageLimit: 0 } : {};
+      const newForgedBytes = await Tezos.contract.getTransferSignatureHash({
+        to,
+        amount: mutezAmount,
+        mutez: true,
+        ...rest
+      });
       console.log('newForgedBytes =', JSON.stringify(newForgedBytes, null, 2));
 
       // 5. sign
@@ -352,13 +357,11 @@ program
 
 async function isAddressActive(address, network) {
   try {
-    const response = await rp({
-      method: 'GET',
-      uri: `${explorerApiUrl[network]}/explorer/account/${address}/op`,
-      json: true
+    Tezos.setProvider({
+      rpc: rpcUrl[network]
     });
-
-    return !!response.first_seen;
+    let balanceInMutez = await Tezos.tz.getBalance(address);
+    return balanceInMutez.gt(0);
   } catch (e) {
     return false;
   }
