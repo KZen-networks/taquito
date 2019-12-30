@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const crypto = require('crypto');
+const rp = require('request-promise');
 const program = require('commander');
 const fs = require('fs');
 const path = require('path');
@@ -13,6 +14,11 @@ const { Tezos } = require('../packages/taquito/dist/lib/taquito');
 const { prefix, b58cencode, b58cdecode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
 
 const CLIENT_DB_PATH = path.join(__dirname, 'client-db');
+
+const explorerApiUrl = {
+  babylonnet: 'https://api.babylonnet.tzstats.com',
+  mainnet: 'https://api.tzstats.com'
+};
 
 const rpcUrl = {
   babylonnet: 'https://rpcalpha.tzbeta.net/',
@@ -166,6 +172,64 @@ program
   });
 
 program
+  .command('transfer-all <from> <to>')
+  .alias('ta')
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (from, to, options) => {
+    const network = options.network || 'babylonnet';
+    const { privateKey } = db.get('addresses').find({address: from}).value();
+    Tezos.setProvider({
+      signer: new InMemorySigner(privateKey),
+      rpc: rpcUrl[network]
+    });
+    try {
+      // 1. get balance
+      const balanceInMutez = await Tezos.tz.getBalance(from);
+      console.log('balanceInMutez =', balanceInMutez.toString());
+
+      // 2. mock with fake amount (in order to get the gas fee)
+      const mockMutezAmount = balanceInMutez.div(2).decimalPlaces(0).toNumber();
+      console.log('mockMutezAmount =', mockMutezAmount);
+      const forgedBytes = await Tezos.contract.getTransferSignatureHash({ to, amount: mockMutezAmount, mutez: true });
+      console.log('forgedBytes =', JSON.stringify(forgedBytes, null, 2));
+      const totalFee = forgedBytes.opOb.contents.reduce((acc, currContent) => {
+        return acc + parseInt(currContent.fee);
+      }, 0);
+      console.log('totalFee =', totalFee);
+
+      // 3. calculate storage limit to burn (0 if destination is active)
+      // const isDestinationActive = await isAddressActive(to, network);
+      // const totalStorageLimit = isDestinationActive ?
+      //   0 :
+      //   forgedBytes.opOb.contents.reduce((acc, currContent) => {
+      //     return acc + parseInt(currContent.storage_limit);
+      //   }, 0);
+      const totalStorageLimit = forgedBytes.opOb.contents.reduce((acc, currContent) => {
+        return acc + parseInt(currContent.storage_limit);
+      }, 0);
+      console.log('totalStorageLimit =', totalStorageLimit);
+
+      // 4. construct the new transaction with the entire balance minus the fees
+      const mutezAmount = balanceInMutez.minus(totalFee + totalStorageLimit * 1000).toNumber();  // totalFee in mutez (1e-6), totalStorageLimit in millitez (1e-3)
+      console.log('mutezAmount =', mutezAmount);
+      const newForgedBytes = await Tezos.contract.getTransferSignatureHash({ to, amount: mutezAmount, mutez: true });
+      console.log('newForgedBytes =', JSON.stringify(newForgedBytes, null, 2));
+
+      // 5. sign
+      const {prefixSig, sbytes} = await Tezos.signer.sign(newForgedBytes.opbytes, new Uint8Array([3]));
+      console.log('prefixSig =', prefixSig);
+      console.log('sbytes =', sbytes);
+      const op = await Tezos.contract.injectTransferSignatureAndBroadcast(newForgedBytes, prefixSig, sbytes);
+      logOp(op);
+
+      const id = await op.confirmation();
+      console.log('id =', id);
+    } catch (err) {
+      console.error('err =', err);
+    }
+  });
+
+program
   .command('get-transfer-hash <from_x> <from_y> <to> <xtz_amount>')
   .alias('gth')
   .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
@@ -208,6 +272,20 @@ program
     } catch (err) {
       console.error('err =', err);
     }
+  });
+
+program
+  .command('get-delegate-hash <from_x> <from_y> <to>')
+  .description('Delegate funds to a baker account')
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (fromX, fromY, to, options) => {
+    const publicKey = {x: fromX, y: fromY};
+    Tezos.setProvider({
+      signer: new PublicOnlySigner(publicKey),
+      rpc: rpcUrl[options.network || 'babylonnet']
+    });
+    const forgedBytes = await Tezos.contract.getDelegateSignatureHash({source: from, delegate: to});
+    console.log('forgedBytes =', forgedBytes);
   });
 
 program
@@ -255,5 +333,35 @@ program
     }
   });
 
+program
+  .command('is-active <address>')
+  .alias('ia')
+  .description('is given Tezos address active')
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (address, options) => {
+    const network = options.network || 'babylonnet';
+    Tezos.setProvider({
+      rpc: rpcUrl[network]
+    });
+    try {
+      console.log(await isAddressActive(address, network));
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+async function isAddressActive(address, network) {
+  try {
+    const response = await rp({
+      method: 'GET',
+      uri: `${explorerApiUrl[network]}/explorer/account/${address}/op`,
+      json: true
+    });
+
+    return !!response.first_seen;
+  } catch (e) {
+    return false;
+  }
+}
 
 program.parse(process.argv);

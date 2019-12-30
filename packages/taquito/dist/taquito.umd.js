@@ -287,8 +287,8 @@
     (function (DEFAULT_STORAGE_LIMIT) {
         DEFAULT_STORAGE_LIMIT[DEFAULT_STORAGE_LIMIT["DELEGATION"] = 0] = "DELEGATION";
         DEFAULT_STORAGE_LIMIT[DEFAULT_STORAGE_LIMIT["ORIGINATION"] = 257] = "ORIGINATION";
-        DEFAULT_STORAGE_LIMIT[DEFAULT_STORAGE_LIMIT["TRANSFER"] = 300] = "TRANSFER";
-        DEFAULT_STORAGE_LIMIT[DEFAULT_STORAGE_LIMIT["REVEAL"] = 300] = "REVEAL";
+        DEFAULT_STORAGE_LIMIT[DEFAULT_STORAGE_LIMIT["TRANSFER"] = 257] = "TRANSFER";
+        DEFAULT_STORAGE_LIMIT[DEFAULT_STORAGE_LIMIT["REVEAL"] = 0] = "REVEAL";
     })(exports.DEFAULT_STORAGE_LIMIT || (exports.DEFAULT_STORAGE_LIMIT = {}));
     (function (Protocols) {
         Protocols["Pt24m4xi"] = "Pt24m4xiPbLDhVgVfABUjirbmda3yohdN82Sp9FeuAXJ4eV9otd";
@@ -1828,7 +1828,7 @@
             delegate: op.delegate,
             fee: Number(op.fee),
             gasLimit: Number(op.gas_limit),
-            storageLimit: Number(op.storage_limit)
+            storageLimit: Number(op.storage_limit),
         };
     }
 

@@ -559,7 +559,7 @@ function constructedOperationToDelegateParams(op) {
         delegate: op.delegate,
         fee: Number(op.fee),
         gasLimit: Number(op.gas_limit),
-        storageLimit: Number(op.storage_limit)
+        storageLimit: Number(op.storage_limit),
     };
 }
 //# sourceMappingURL=rpc-contract-provider.js.map
