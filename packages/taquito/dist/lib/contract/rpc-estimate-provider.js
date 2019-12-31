@@ -112,11 +112,7 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
             var _a, opbytes, _b, branch, contents, operation, _c, opResponse, operationResults, totalGas, totalStorage;
             return __generator(this, function (_d) {
                 switch (_d.label) {
-                    case 0:
-                        console.log('createEstimate: defaultStorage =', defaultStorage);
-                        console.log('createEstimate: params =', params);
-                        console.log('createEstimate: params.operation =', params.operation);
-                        return [4 /*yield*/, this.prepareAndForge(params)];
+                    case 0: return [4 /*yield*/, this.prepareAndForge(params)];
                     case 1:
                         _a = _d.sent(), opbytes = _a.opbytes, _b = _a.opOb, branch = _b.branch, contents = _b.contents;
                         operation = { branch: branch, contents: contents, signature: SIGNATURE_STUB };
@@ -131,9 +127,7 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
                     case 4: return [4 /*yield*/, this.simulate(operation)];
                     case 5:
                         opResponse = (_d.sent()).opResponse;
-                        console.log('createEstimate: opResponse =', opResponse);
                         operationResults = this.getOperationResult(opResponse, kind);
-                        console.log('createEstimate: operationResults =', JSON.stringify(operationResults, null, 2));
                         totalGas = 0;
                         totalStorage = 0;
                         operationResults.forEach(function (result) {
@@ -141,7 +135,7 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
                             totalStorage +=
                                 'paid_storage_size_diff' in result ? Number(result.paid_storage_size_diff) || 0 : 0;
                         });
-                        return [2 /*return*/, new estimate_1.Estimate(Math.max((totalGas || 0), minimumGas), Number(totalStorage || 0) + defaultStorage, opbytes.length / 2)];
+                        return [2 /*return*/, new estimate_1.Estimate(Math.max(totalGas || 0, minimumGas), Number(totalStorage || 0) + defaultStorage, opbytes.length / 2)];
                 }
             });
         });
@@ -188,9 +182,6 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
                     case 0: return [4 /*yield*/, this.signer.publicKeyHash()];
                     case 1:
                         pkh = _b.sent();
-                        console.log('rpc-estimate-provider: transfer: fee =', fee);
-                        console.log('rpc-estimate-provider: transfer: storageLimit =', storageLimit);
-                        console.log('rpc-estimate-provider: transfer: gasLimit =', gasLimit);
                         return [4 /*yield*/, prepare_1.createTransferOperation(__assign(__assign({}, rest), this.DEFAULT_PARAMS))];
                     case 2:
                         op = _b.sent();

@@ -1472,24 +1472,17 @@
                             calculatedFee = fee;
                             calculatedGas = gasLimit;
                             calculatedStorage = storageLimit;
-                            console.log('calculatedFee =', calculatedFee);
-                            console.log('calculatedGas =', calculatedGas);
-                            console.log('calculatedStorage =', calculatedStorage);
                             if (!(fee === undefined || gasLimit === undefined || storageLimit === undefined)) return [3 /*break*/, 2];
-                            console.log('undefineds');
                             return [4 /*yield*/, estimator(__assign({ fee: fee, gasLimit: gasLimit, storageLimit: storageLimit }, rest))];
                         case 1:
                             estimation = _b.sent();
                             if (calculatedFee === undefined) {
-                                console.log('estimation.suggestedFeeMutez =', estimation.suggestedFeeMutez);
                                 calculatedFee = estimation.suggestedFeeMutez;
                             }
                             if (calculatedGas === undefined) {
-                                console.log('estimation.gasLimit =', estimation.gasLimit);
                                 calculatedGas = estimation.gasLimit;
                             }
                             if (calculatedStorage === undefined) {
-                                console.log('estimation.storageLimit =', estimation.storageLimit);
                                 calculatedStorage = estimation.storageLimit;
                             }
                             _b.label = 2;
@@ -1748,11 +1741,9 @@
                         case 0: return [4 /*yield*/, this.estimate(params, this.estimator.transfer.bind(this.estimator))];
                         case 1:
                             estimate = _b.sent();
-                            console.log('getTransferSignatureHash: estimate =', estimate);
                             return [4 /*yield*/, createTransferOperation(__assign(__assign({}, params), estimate))];
                         case 2:
                             operation = _b.sent();
-                            console.log('getTransferSignatureHash: operation =', operation);
                             _a = params.source;
                             if (_a) return [3 /*break*/, 4];
                             return [4 /*yield*/, this.signer.publicKeyHash()];
@@ -1969,11 +1960,7 @@
                 var _a, opbytes, _b, branch, contents, operation, _c, opResponse, operationResults, totalGas, totalStorage;
                 return __generator(this, function (_d) {
                     switch (_d.label) {
-                        case 0:
-                            console.log('createEstimate: defaultStorage =', defaultStorage);
-                            console.log('createEstimate: params =', params);
-                            console.log('createEstimate: params.operation =', params.operation);
-                            return [4 /*yield*/, this.prepareAndForge(params)];
+                        case 0: return [4 /*yield*/, this.prepareAndForge(params)];
                         case 1:
                             _a = _d.sent(), opbytes = _a.opbytes, _b = _a.opOb, branch = _b.branch, contents = _b.contents;
                             operation = { branch: branch, contents: contents, signature: SIGNATURE_STUB };
@@ -1988,9 +1975,7 @@
                         case 4: return [4 /*yield*/, this.simulate(operation)];
                         case 5:
                             opResponse = (_d.sent()).opResponse;
-                            console.log('createEstimate: opResponse =', opResponse);
                             operationResults = this.getOperationResult(opResponse, kind);
-                            console.log('createEstimate: operationResults =', JSON.stringify(operationResults, null, 2));
                             totalGas = 0;
                             totalStorage = 0;
                             operationResults.forEach(function (result) {
@@ -1998,7 +1983,7 @@
                                 totalStorage +=
                                     'paid_storage_size_diff' in result ? Number(result.paid_storage_size_diff) || 0 : 0;
                             });
-                            return [2 /*return*/, new Estimate(Math.max((totalGas || 0), minimumGas), Number(totalStorage || 0) + defaultStorage, opbytes.length / 2)];
+                            return [2 /*return*/, new Estimate(Math.max(totalGas || 0, minimumGas), Number(totalStorage || 0) + defaultStorage, opbytes.length / 2)];
                     }
                 });
             });
@@ -2045,9 +2030,6 @@
                         case 0: return [4 /*yield*/, this.signer.publicKeyHash()];
                         case 1:
                             pkh = _b.sent();
-                            console.log('rpc-estimate-provider: transfer: fee =', fee);
-                            console.log('rpc-estimate-provider: transfer: storageLimit =', storageLimit);
-                            console.log('rpc-estimate-provider: transfer: gasLimit =', gasLimit);
                             return [4 /*yield*/, createTransferOperation(__assign(__assign({}, rest), this.DEFAULT_PARAMS))];
                         case 2:
                             op = _b.sent();

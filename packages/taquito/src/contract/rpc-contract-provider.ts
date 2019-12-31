@@ -118,26 +118,18 @@ export class RpcContractProvider extends OperationEmitter implements ContractPro
     let calculatedFee = fee;
     let calculatedGas = gasLimit;
     let calculatedStorage = storageLimit;
-    console.log('calculatedFee =', calculatedFee);
-    console.log('calculatedGas =', calculatedGas);
-    console.log('calculatedStorage =', calculatedStorage);
-
     if (fee === undefined || gasLimit === undefined || storageLimit === undefined) {
-      console.log('undefineds');
       const estimation = await estimator({ fee, gasLimit, storageLimit, ...(rest as any) });
 
       if (calculatedFee === undefined) {
-        console.log('estimation.suggestedFeeMutez =', estimation.suggestedFeeMutez);
         calculatedFee = estimation.suggestedFeeMutez;
       }
 
       if (calculatedGas === undefined) {
-        console.log('estimation.gasLimit =', estimation.gasLimit);
         calculatedGas = estimation.gasLimit;
       }
 
       if (calculatedStorage === undefined) {
-        console.log('estimation.storageLimit =', estimation.storageLimit);
         calculatedStorage = estimation.storageLimit;
       }
     }
@@ -324,12 +316,10 @@ export class RpcContractProvider extends OperationEmitter implements ContractPro
    */
   async getTransferSignatureHash(params: TransferParams): Promise<ForgedBytes> {
     const estimate = await this.estimate(params, this.estimator.transfer.bind(this.estimator));
-    console.log('getTransferSignatureHash: estimate =', estimate);
     const operation = await createTransferOperation({
       ...params,
       ...estimate,
     });
-    console.log('getTransferSignatureHash: operation =', operation);
     const source = params.source || (await this.signer.publicKeyHash());
     return this.prepareAndForge({ operation, source });
   }

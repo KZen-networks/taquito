@@ -202,24 +202,17 @@ var RpcContractProvider = /** @class */ (function (_super) {
                         calculatedFee = fee;
                         calculatedGas = gasLimit;
                         calculatedStorage = storageLimit;
-                        console.log('calculatedFee =', calculatedFee);
-                        console.log('calculatedGas =', calculatedGas);
-                        console.log('calculatedStorage =', calculatedStorage);
                         if (!(fee === undefined || gasLimit === undefined || storageLimit === undefined)) return [3 /*break*/, 2];
-                        console.log('undefineds');
                         return [4 /*yield*/, estimator(__assign({ fee: fee, gasLimit: gasLimit, storageLimit: storageLimit }, rest))];
                     case 1:
                         estimation = _b.sent();
                         if (calculatedFee === undefined) {
-                            console.log('estimation.suggestedFeeMutez =', estimation.suggestedFeeMutez);
                             calculatedFee = estimation.suggestedFeeMutez;
                         }
                         if (calculatedGas === undefined) {
-                            console.log('estimation.gasLimit =', estimation.gasLimit);
                             calculatedGas = estimation.gasLimit;
                         }
                         if (calculatedStorage === undefined) {
-                            console.log('estimation.storageLimit =', estimation.storageLimit);
                             calculatedStorage = estimation.storageLimit;
                         }
                         _b.label = 2;
@@ -478,11 +471,9 @@ var RpcContractProvider = /** @class */ (function (_super) {
                     case 0: return [4 /*yield*/, this.estimate(params, this.estimator.transfer.bind(this.estimator))];
                     case 1:
                         estimate = _b.sent();
-                        console.log('getTransferSignatureHash: estimate =', estimate);
                         return [4 /*yield*/, prepare_1.createTransferOperation(__assign(__assign({}, params), estimate))];
                     case 2:
                         operation = _b.sent();
-                        console.log('getTransferSignatureHash: operation =', operation);
                         _a = params.source;
                         if (_a) return [3 /*break*/, 4];
                         return [4 /*yield*/, this.signer.publicKeyHash()];

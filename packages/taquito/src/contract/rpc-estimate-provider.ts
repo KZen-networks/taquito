@@ -56,9 +56,6 @@ export class RPCEstimateProvider extends OperationEmitter implements EstimationP
     defaultStorage: number,
     minimumGas: number = 0
   ) {
-    console.log('createEstimate: defaultStorage =', defaultStorage);
-    console.log('createEstimate: params =', params);
-    console.log('createEstimate: params.operation =', params.operation);
     const {
       opbytes,
       opOb: { branch, contents },
@@ -70,9 +67,7 @@ export class RPCEstimateProvider extends OperationEmitter implements EstimationP
     }
 
     const { opResponse } = await this.simulate(operation);
-    console.log('createEstimate: opResponse =', opResponse);
     const operationResults = this.getOperationResult(opResponse, kind);
-    console.log('createEstimate: operationResults =', JSON.stringify(operationResults, null, 2));
 
     let totalGas = 0;
     let totalStorage = 0;
@@ -122,9 +117,6 @@ export class RPCEstimateProvider extends OperationEmitter implements EstimationP
    */
   async transfer({ fee, storageLimit, gasLimit, ...rest }: TransferParams) {
     const pkh = await this.signer.publicKeyHash();
-    console.log('rpc-estimate-provider: transfer: fee =', fee);
-    console.log('rpc-estimate-provider: transfer: storageLimit =', storageLimit);
-    console.log('rpc-estimate-provider: transfer: gasLimit =', gasLimit);
     const op = await createTransferOperation({
       ...rest,
       ...this.DEFAULT_PARAMS,

@@ -191,9 +191,9 @@ program
       // 2. mock with fake amount (in order to calculate the gas fee)
       const mockMutezAmount = balanceInMutez.div(2).decimalPlaces(0).toNumber();
       console.log('mockMutezAmount =', mockMutezAmount);
-      const forgedBytes = await Tezos.contract.getTransferSignatureHash({ to, amount: mockMutezAmount, mutez: true });
-      console.log('forgedBytes =', JSON.stringify(forgedBytes, null, 2));
-      const totalFee = forgedBytes.opOb.contents.reduce((acc, currContent) => {
+      const mockForgedBytes = await Tezos.contract.getTransferSignatureHash({ to, amount: mockMutezAmount, mutez: true });
+      console.log('mockForgedBytes =', JSON.stringify(mockForgedBytes, null, 2));
+      const totalFee = mockForgedBytes.opOb.contents.reduce((acc, currContent) => {
         return acc + parseInt(currContent.fee);
       }, 0);
       console.log('totalFee =', totalFee);
@@ -203,28 +203,29 @@ program
       console.log('shouldUseZeroStorage =', shouldUseZeroStorage);
       const totalStorageLimit = shouldUseZeroStorage ?
         0 :
-        forgedBytes.opOb.contents.reduce((acc, currContent) => {
+        mockForgedBytes.opOb.contents.reduce((acc, currContent) => {
           return acc + parseInt(currContent.storage_limit);
         }, 0);
       console.log('totalStorageLimit =', totalStorageLimit);
 
       // 4. construct the new transaction with the entire balance minus the fees
-      const mutezAmount = balanceInMutez.minus(totalFee + Math.max(MINIMUM_FEE_BUFFER_MTZ, totalStorageLimit) * 1000).toNumber();  // totalFee in mutez (1e-6), totalStorageLimit in millitez (1e-3)
+      const mutezAmount = balanceInMutez.minus(totalFee + Math.max(MINIMUM_FEE_BUFFER_MTZ, totalStorageLimit) * 1000) // totalFee in mutez (1e-6), totalStorageLimit in mtez (1e-3)
+        .toNumber();
       console.log('mutezAmount =', mutezAmount);
       const rest = shouldUseZeroStorage ? { storageLimit: 0 } : {};
-      const newForgedBytes = await Tezos.contract.getTransferSignatureHash({
+      const forgedBytes = await Tezos.contract.getTransferSignatureHash({
         to,
         amount: mutezAmount,
         mutez: true,
         ...rest
       });
-      console.log('newForgedBytes =', JSON.stringify(newForgedBytes, null, 2));
+      console.log('forgedBytes =', JSON.stringify(forgedBytes, null, 2));
 
       // 5. sign
-      const {prefixSig, sbytes} = await Tezos.signer.sign(newForgedBytes.opbytes, new Uint8Array([3]));
+      const {prefixSig, sbytes} = await Tezos.signer.sign(forgedBytes.opbytes, new Uint8Array([3]));
       console.log('prefixSig =', prefixSig);
       console.log('sbytes =', sbytes);
-      const op = await Tezos.contract.injectTransferSignatureAndBroadcast(newForgedBytes, prefixSig, sbytes);
+      const op = await Tezos.contract.injectTransferSignatureAndBroadcast(forgedBytes, prefixSig, sbytes);
       logOp(op);
 
       const id = await op.confirmation();
