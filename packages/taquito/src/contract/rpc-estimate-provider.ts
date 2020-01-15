@@ -60,14 +60,23 @@ export class RPCEstimateProvider extends OperationEmitter implements EstimationP
       opbytes,
       opOb: { branch, contents },
     } = await this.prepareAndForge(params);
+    console.log('rpc-estimate-provider::createEstimate: params =', params);
+    console.log('rpc-estimate-provider::createEstimate: defaultStorage =', defaultStorage);
+    console.log('rpc-estimate-provider::createEstimate: minimumGas =', minimumGas);
+    console.log('rpc-estimate-provider::createEstimate: opbytes =', opbytes);
+    console.log('rpc-estimate-provider::createEstimate: branch =', branch);
+    console.log('rpc-estimate-provider::createEstimate: contents =', contents);
 
     let operation: RPCRunOperationParam = { branch, contents, signature: SIGNATURE_STUB };
+    console.log('rpc-estimate-provider::createEstimate: operation =', operation);
     if (await this.context.isAnyProtocolActive(protocols['005'])) {
       operation = { operation, chain_id: await this.rpc.getChainId() };
     }
 
     const { opResponse } = await this.simulate(operation);
+    console.log('rpc-estimate-provider::createEstimate: opResponse =', opResponse);
     const operationResults = this.getOperationResult(opResponse, kind);
+    console.log('rpc-estimate-provider::createEstimate: operationResults =', operationResults);
 
     let totalGas = 0;
     let totalStorage = 0;
@@ -76,6 +85,8 @@ export class RPCEstimateProvider extends OperationEmitter implements EstimationP
       totalStorage +=
         'paid_storage_size_diff' in result ? Number(result.paid_storage_size_diff) || 0 : 0;
     });
+    console.log('rpc-estimate-provider::createEstimate: totalGas =', totalGas);
+    console.log('rpc-estimate-provider::createEstimate: totalStorage =', totalStorage);
 
     return new Estimate(
       Math.max(totalGas || 0, minimumGas),
@@ -121,6 +132,7 @@ export class RPCEstimateProvider extends OperationEmitter implements EstimationP
       ...rest,
       ...this.DEFAULT_PARAMS,
     });
+    console.log('rpc-estimate-provider::transfer: op =', op);
     return this.createEstimate(
       { operation: op, source: pkh },
       'transaction',
@@ -137,7 +149,15 @@ export class RPCEstimateProvider extends OperationEmitter implements EstimationP
    * @param Estimate
    */
   async setDelegate(params: DelegateParams) {
-    const op = await createSetDelegateOperation({ ...params, ...this.DEFAULT_PARAMS });
+    const sourceBalance = await this.rpc.getBalance(params.source);
+    console.log('sourceBalance =', sourceBalance);
+    const defaultParams = {
+      fee: sourceBalance.toNumber() - 1, // leave minimum amount possible to delegate
+      storageLimit: DEFAULT_STORAGE_LIMIT.DELEGATION,
+      gasLimit: DEFAULT_GAS_LIMIT.DELEGATION,
+    };
+    console.log('defaultParams =', defaultParams);
+    const op = await createSetDelegateOperation({ ...params, ...defaultParams });
     const sourceOrDefault = params.source || (await this.signer.publicKeyHash());
     return this.createEstimate(
       { operation: op, source: sourceOrDefault },

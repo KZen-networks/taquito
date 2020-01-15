@@ -1472,18 +1472,25 @@
                             calculatedFee = fee;
                             calculatedGas = gasLimit;
                             calculatedStorage = storageLimit;
+                            console.log('rpc-contract-provider::estimate: calculatedFee =', calculatedFee);
+                            console.log('rpc-contract-provider::estimate: calculatedGas =', calculatedGas);
+                            console.log('rpc-contract-provider::estimate: calculatedStorage =', calculatedStorage);
                             if (!(fee === undefined || gasLimit === undefined || storageLimit === undefined)) return [3 /*break*/, 2];
+                            console.log('rpc-contract-provider::estimate: undefined = true');
                             return [4 /*yield*/, estimator(__assign({ fee: fee, gasLimit: gasLimit, storageLimit: storageLimit }, rest))];
                         case 1:
                             estimation = _b.sent();
                             if (calculatedFee === undefined) {
                                 calculatedFee = estimation.suggestedFeeMutez;
+                                console.log('rpc-contract-provider::estimate: calculatedFee =', calculatedFee);
                             }
                             if (calculatedGas === undefined) {
                                 calculatedGas = estimation.gasLimit;
+                                console.log('rpc-contract-provider::estimate: calculatedGas =', calculatedGas);
                             }
                             if (calculatedStorage === undefined) {
                                 calculatedStorage = estimation.storageLimit;
+                                console.log('rpc-contract-provider::estimate: storageLimit =', storageLimit);
                             }
                             _b.label = 2;
                         case 2: return [2 /*return*/, {
@@ -1602,9 +1609,12 @@
                             return [4 /*yield*/, this.estimate(params, this.estimator.setDelegate.bind(this.estimator))];
                         case 2:
                             estimate = _b.sent();
+                            console.log('-'.repeat(20));
+                            console.log('rpc-contract-provider::getDelegateSignatureHash, estimate =', estimate);
                             return [4 /*yield*/, createSetDelegateOperation(__assign(__assign({}, params), estimate))];
                         case 3:
                             operation = _b.sent();
+                            console.log('rpc-contract-provider::getDelegateSignatureHash, operation =', operation);
                             _a = params.source;
                             if (_a) return [3 /*break*/, 5];
                             return [4 /*yield*/, this.signer.publicKeyHash()];
@@ -1865,6 +1875,7 @@
              */
             get: function () {
                 var limit = Math.max(Number(this._storageLimit), 0);
+                console.log('estiamte.ts::storageLimit, limit =', limit);
                 return limit > 0 ? limit : 0;
             },
             enumerable: true,
@@ -1905,6 +1916,7 @@
              * @description Suggested fee for operation (minimal fees plus a small buffer)
              */
             get: function () {
+                console.log('estiamte.ts::suggestedFeeMutez, this.operationFeeMutez =', this.operationFeeMutez);
                 return this.roundUp(this.operationFeeMutez + MINIMAL_FEE_MUTEZ * 2);
             },
             enumerable: true,
@@ -1963,7 +1975,14 @@
                         case 0: return [4 /*yield*/, this.prepareAndForge(params)];
                         case 1:
                             _a = _d.sent(), opbytes = _a.opbytes, _b = _a.opOb, branch = _b.branch, contents = _b.contents;
+                            console.log('rpc-estimate-provider::createEstimate: params =', params);
+                            console.log('rpc-estimate-provider::createEstimate: defaultStorage =', defaultStorage);
+                            console.log('rpc-estimate-provider::createEstimate: minimumGas =', minimumGas);
+                            console.log('rpc-estimate-provider::createEstimate: opbytes =', opbytes);
+                            console.log('rpc-estimate-provider::createEstimate: branch =', branch);
+                            console.log('rpc-estimate-provider::createEstimate: contents =', contents);
                             operation = { branch: branch, contents: contents, signature: SIGNATURE_STUB };
+                            console.log('rpc-estimate-provider::createEstimate: operation =', operation);
                             return [4 /*yield*/, this.context.isAnyProtocolActive(protocols['005'])];
                         case 2:
                             if (!_d.sent()) return [3 /*break*/, 4];
@@ -1975,7 +1994,9 @@
                         case 4: return [4 /*yield*/, this.simulate(operation)];
                         case 5:
                             opResponse = (_d.sent()).opResponse;
+                            console.log('rpc-estimate-provider::createEstimate: opResponse =', opResponse);
                             operationResults = this.getOperationResult(opResponse, kind);
+                            console.log('rpc-estimate-provider::createEstimate: operationResults =', operationResults);
                             totalGas = 0;
                             totalStorage = 0;
                             operationResults.forEach(function (result) {
@@ -1983,6 +2004,8 @@
                                 totalStorage +=
                                     'paid_storage_size_diff' in result ? Number(result.paid_storage_size_diff) || 0 : 0;
                             });
+                            console.log('rpc-estimate-provider::createEstimate: totalGas =', totalGas);
+                            console.log('rpc-estimate-provider::createEstimate: totalStorage =', totalStorage);
                             return [2 /*return*/, new Estimate(Math.max(totalGas || 0, minimumGas), Number(totalStorage || 0) + defaultStorage, opbytes.length / 2)];
                     }
                 });
@@ -2033,6 +2056,7 @@
                             return [4 /*yield*/, createTransferOperation(__assign(__assign({}, rest), this.DEFAULT_PARAMS))];
                         case 2:
                             op = _b.sent();
+                            console.log('rpc-estimate-provider::transfer: op =', op);
                             return [2 /*return*/, this.createEstimate({ operation: op, source: pkh }, 'transaction', typeof storageLimit === 'number' ? storageLimit : exports.DEFAULT_STORAGE_LIMIT.TRANSFER)];
                     }
                 });
@@ -2048,19 +2072,29 @@
          */
         RPCEstimateProvider.prototype.setDelegate = function (params) {
             return __awaiter(this, void 0, void 0, function () {
-                var op, sourceOrDefault, _a;
+                var sourceBalance, defaultParams, op, sourceOrDefault, _a;
                 return __generator(this, function (_b) {
                     switch (_b.label) {
-                        case 0: return [4 /*yield*/, createSetDelegateOperation(__assign(__assign({}, params), this.DEFAULT_PARAMS))];
+                        case 0: return [4 /*yield*/, this.rpc.getBalance(params.source)];
                         case 1:
+                            sourceBalance = _b.sent();
+                            console.log('sourceBalance =', sourceBalance);
+                            defaultParams = {
+                                fee: sourceBalance.toNumber() - 1,
+                                storageLimit: exports.DEFAULT_STORAGE_LIMIT.DELEGATION,
+                                gasLimit: exports.DEFAULT_GAS_LIMIT.DELEGATION
+                            };
+                            console.log('defaultParams =', defaultParams);
+                            return [4 /*yield*/, createSetDelegateOperation(__assign(__assign({}, params), defaultParams))];
+                        case 2:
                             op = _b.sent();
                             _a = params.source;
-                            if (_a) return [3 /*break*/, 3];
+                            if (_a) return [3 /*break*/, 4];
                             return [4 /*yield*/, this.signer.publicKeyHash()];
-                        case 2:
-                            _a = (_b.sent());
-                            _b.label = 3;
                         case 3:
+                            _a = (_b.sent());
+                            _b.label = 4;
+                        case 4:
                             sourceOrDefault = _a;
                             return [2 /*return*/, this.createEstimate({ operation: op, source: sourceOrDefault }, 'delegation', exports.DEFAULT_STORAGE_LIMIT.DELEGATION, 
                                 // Delegation have a minimum gas cost

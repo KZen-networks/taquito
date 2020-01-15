@@ -28,6 +28,7 @@ export class Estimate {
    */
   get storageLimit() {
     const limit = Math.max(Number(this._storageLimit), 0);
+    console.log('estiamte.ts::storageLimit, limit =', limit);
     return limit > 0 ? limit : 0;
   }
 
@@ -59,6 +60,7 @@ export class Estimate {
    * @description Suggested fee for operation (minimal fees plus a small buffer)
    */
   get suggestedFeeMutez() {
+    console.log('estiamte.ts::suggestedFeeMutez, this.operationFeeMutez =', this.operationFeeMutez);
     return this.roundUp(this.operationFeeMutez + MINIMAL_FEE_MUTEZ * 2);
   }
 

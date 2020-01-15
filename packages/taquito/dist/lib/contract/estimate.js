@@ -33,6 +33,7 @@ var Estimate = /** @class */ (function () {
          */
         get: function () {
             var limit = Math.max(Number(this._storageLimit), 0);
+            console.log('estiamte.ts::storageLimit, limit =', limit);
             return limit > 0 ? limit : 0;
         },
         enumerable: true,
@@ -73,6 +74,7 @@ var Estimate = /** @class */ (function () {
          * @description Suggested fee for operation (minimal fees plus a small buffer)
          */
         get: function () {
+            console.log('estiamte.ts::suggestedFeeMutez, this.operationFeeMutez =', this.operationFeeMutez);
             return this.roundUp(this.operationFeeMutez + MINIMAL_FEE_MUTEZ * 2);
         },
         enumerable: true,

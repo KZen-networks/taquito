@@ -118,19 +118,26 @@ export class RpcContractProvider extends OperationEmitter implements ContractPro
     let calculatedFee = fee;
     let calculatedGas = gasLimit;
     let calculatedStorage = storageLimit;
+    console.log('rpc-contract-provider::estimate: calculatedFee =', calculatedFee);
+    console.log('rpc-contract-provider::estimate: calculatedGas =', calculatedGas);
+    console.log('rpc-contract-provider::estimate: calculatedStorage =', calculatedStorage);
     if (fee === undefined || gasLimit === undefined || storageLimit === undefined) {
+      console.log('rpc-contract-provider::estimate: undefined = true');
       const estimation = await estimator({ fee, gasLimit, storageLimit, ...(rest as any) });
 
       if (calculatedFee === undefined) {
         calculatedFee = estimation.suggestedFeeMutez;
+        console.log('rpc-contract-provider::estimate: calculatedFee =', calculatedFee);
       }
 
       if (calculatedGas === undefined) {
         calculatedGas = estimation.gasLimit;
+        console.log('rpc-contract-provider::estimate: calculatedGas =', calculatedGas);
       }
 
       if (calculatedStorage === undefined) {
         calculatedStorage = estimation.storageLimit;
+        console.log('rpc-contract-provider::estimate: storageLimit =', storageLimit);
       }
     }
 
@@ -215,7 +222,10 @@ export class RpcContractProvider extends OperationEmitter implements ContractPro
     }
 
     const estimate = await this.estimate(params, this.estimator.setDelegate.bind(this.estimator));
+    console.log('-'.repeat(20));
+    console.log('rpc-contract-provider::getDelegateSignatureHash, estimate =', estimate);
     const operation = await createSetDelegateOperation({ ...params, ...estimate });
+    console.log('rpc-contract-provider::getDelegateSignatureHash, operation =', operation);
     const sourceOrDefault = params.source || (await this.signer.publicKeyHash());
     return this.prepareAndForge({
       operation,

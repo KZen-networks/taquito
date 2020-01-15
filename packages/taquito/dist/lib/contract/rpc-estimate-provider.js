@@ -115,7 +115,14 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
                     case 0: return [4 /*yield*/, this.prepareAndForge(params)];
                     case 1:
                         _a = _d.sent(), opbytes = _a.opbytes, _b = _a.opOb, branch = _b.branch, contents = _b.contents;
+                        console.log('rpc-estimate-provider::createEstimate: params =', params);
+                        console.log('rpc-estimate-provider::createEstimate: defaultStorage =', defaultStorage);
+                        console.log('rpc-estimate-provider::createEstimate: minimumGas =', minimumGas);
+                        console.log('rpc-estimate-provider::createEstimate: opbytes =', opbytes);
+                        console.log('rpc-estimate-provider::createEstimate: branch =', branch);
+                        console.log('rpc-estimate-provider::createEstimate: contents =', contents);
                         operation = { branch: branch, contents: contents, signature: SIGNATURE_STUB };
+                        console.log('rpc-estimate-provider::createEstimate: operation =', operation);
                         return [4 /*yield*/, this.context.isAnyProtocolActive(constants_1.protocols['005'])];
                     case 2:
                         if (!_d.sent()) return [3 /*break*/, 4];
@@ -127,7 +134,9 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
                     case 4: return [4 /*yield*/, this.simulate(operation)];
                     case 5:
                         opResponse = (_d.sent()).opResponse;
+                        console.log('rpc-estimate-provider::createEstimate: opResponse =', opResponse);
                         operationResults = this.getOperationResult(opResponse, kind);
+                        console.log('rpc-estimate-provider::createEstimate: operationResults =', operationResults);
                         totalGas = 0;
                         totalStorage = 0;
                         operationResults.forEach(function (result) {
@@ -135,6 +144,8 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
                             totalStorage +=
                                 'paid_storage_size_diff' in result ? Number(result.paid_storage_size_diff) || 0 : 0;
                         });
+                        console.log('rpc-estimate-provider::createEstimate: totalGas =', totalGas);
+                        console.log('rpc-estimate-provider::createEstimate: totalStorage =', totalStorage);
                         return [2 /*return*/, new estimate_1.Estimate(Math.max(totalGas || 0, minimumGas), Number(totalStorage || 0) + defaultStorage, opbytes.length / 2)];
                 }
             });
@@ -185,6 +196,7 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
                         return [4 /*yield*/, prepare_1.createTransferOperation(__assign(__assign({}, rest), this.DEFAULT_PARAMS))];
                     case 2:
                         op = _b.sent();
+                        console.log('rpc-estimate-provider::transfer: op =', op);
                         return [2 /*return*/, this.createEstimate({ operation: op, source: pkh }, 'transaction', typeof storageLimit === 'number' ? storageLimit : constants_1.DEFAULT_STORAGE_LIMIT.TRANSFER)];
                 }
             });
@@ -200,19 +212,29 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
      */
     RPCEstimateProvider.prototype.setDelegate = function (params) {
         return __awaiter(this, void 0, void 0, function () {
-            var op, sourceOrDefault, _a;
+            var sourceBalance, defaultParams, op, sourceOrDefault, _a;
             return __generator(this, function (_b) {
                 switch (_b.label) {
-                    case 0: return [4 /*yield*/, prepare_1.createSetDelegateOperation(__assign(__assign({}, params), this.DEFAULT_PARAMS))];
+                    case 0: return [4 /*yield*/, this.rpc.getBalance(params.source)];
                     case 1:
+                        sourceBalance = _b.sent();
+                        console.log('sourceBalance =', sourceBalance);
+                        defaultParams = {
+                            fee: sourceBalance.toNumber() - 1,
+                            storageLimit: constants_1.DEFAULT_STORAGE_LIMIT.DELEGATION,
+                            gasLimit: constants_1.DEFAULT_GAS_LIMIT.DELEGATION
+                        };
+                        console.log('defaultParams =', defaultParams);
+                        return [4 /*yield*/, prepare_1.createSetDelegateOperation(__assign(__assign({}, params), defaultParams))];
+                    case 2:
                         op = _b.sent();
                         _a = params.source;
-                        if (_a) return [3 /*break*/, 3];
+                        if (_a) return [3 /*break*/, 4];
                         return [4 /*yield*/, this.signer.publicKeyHash()];
-                    case 2:
-                        _a = (_b.sent());
-                        _b.label = 3;
                     case 3:
+                        _a = (_b.sent());
+                        _b.label = 4;
+                    case 4:
                         sourceOrDefault = _a;
                         return [2 /*return*/, this.createEstimate({ operation: op, source: sourceOrDefault }, 'delegation', constants_1.DEFAULT_STORAGE_LIMIT.DELEGATION, 
                             // Delegation have a minimum gas cost

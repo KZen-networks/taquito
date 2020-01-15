@@ -268,11 +268,11 @@ program
     try {
       const delegateParams = { source: from, delegate: to };
       if (options.trackingId) {
-        delegateParams.gasLimit = Math.ceil(DEFAULT_GAS_LIMIT.DELEGATION / 1000) * 1000 + parseInt(options.trackingId)
+        delegateParams.gasLimit = Math.ceil(DEFAULT_GAS_LIMIT.DELEGATION / 1000) * 1000 + parseInt(options.trackingId);
       }
-      console.log('delegateParams.gasLimit =', delegateParams.gasLimit);
+
       const forgedBytes = await Tezos.contract.getDelegateSignatureHash(delegateParams);
-      console.log('forgedBytes =', forgedBytes);
+      console.log('forgedBytes =', JSON.stringify(forgedBytes, null, 2));
       const {prefixSig, sbytes} = await Tezos.signer.sign(forgedBytes.opbytes, new Uint8Array([3]));
       console.log('prefixSig =', prefixSig);
       console.log('sbytes =', sbytes);
@@ -296,6 +296,7 @@ program
       signer: new PublicOnlySigner(publicKey),
       rpc: rpcUrl[options.network || 'babylonnet']
     });
+
     const forgedBytes = await Tezos.contract.getDelegateSignatureHash({source: from, delegate: to});
     console.log('forgedBytes =', forgedBytes);
   });
