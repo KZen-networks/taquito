@@ -10,7 +10,7 @@ const FileSync = require('lowdb/adapters/FileSync');
 
 const { InMemorySigner, PublicOnlySigner } = require('../packages/taquito-signer/dist/lib');
 
-const { Tezos } = require('../packages/taquito/dist/lib/taquito');
+const { Tezos, DEFAULT_GAS_LIMIT } = require('../packages/taquito/dist/lib/taquito');
 const { prefix, b58cencode, b58cdecode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
 
 const CLIENT_DB_PATH = path.join(__dirname, 'client-db');
@@ -258,6 +258,7 @@ program
   .command('delegate <from> <to>')
   .description('Delegate funds to a baker account')
   .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .option('-t, --trackingId [id]', '3 digits number to signal delegator through gas limit suffix')
   .action(async (from, to, options) => {
     const { privateKey } = db.get('addresses').find({address: from}).value();
     Tezos.setProvider({
@@ -265,7 +266,12 @@ program
       rpc: rpcUrl[options.network || 'babylonnet']
     });
     try {
-      const forgedBytes = await Tezos.contract.getDelegateSignatureHash({source: from, delegate: to});
+      const delegateParams = { source: from, delegate: to };
+      if (options.trackingId) {
+        delegateParams.gasLimit = Math.ceil(DEFAULT_GAS_LIMIT.DELEGATION / 1000) * 1000 + parseInt(options.trackingId)
+      }
+      console.log('delegateParams.gasLimit =', delegateParams.gasLimit);
+      const forgedBytes = await Tezos.contract.getDelegateSignatureHash(delegateParams);
       console.log('forgedBytes =', forgedBytes);
       const {prefixSig, sbytes} = await Tezos.signer.sign(forgedBytes.opbytes, new Uint8Array([3]));
       console.log('prefixSig =', prefixSig);
