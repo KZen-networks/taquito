@@ -202,25 +202,18 @@ var RpcContractProvider = /** @class */ (function (_super) {
                         calculatedFee = fee;
                         calculatedGas = gasLimit;
                         calculatedStorage = storageLimit;
-                        console.log('rpc-contract-provider::estimate: calculatedFee =', calculatedFee);
-                        console.log('rpc-contract-provider::estimate: calculatedGas =', calculatedGas);
-                        console.log('rpc-contract-provider::estimate: calculatedStorage =', calculatedStorage);
                         if (!(fee === undefined || gasLimit === undefined || storageLimit === undefined)) return [3 /*break*/, 2];
-                        console.log('rpc-contract-provider::estimate: undefined = true');
                         return [4 /*yield*/, estimator(__assign({ fee: fee, gasLimit: gasLimit, storageLimit: storageLimit }, rest))];
                     case 1:
                         estimation = _b.sent();
                         if (calculatedFee === undefined) {
                             calculatedFee = estimation.suggestedFeeMutez;
-                            console.log('rpc-contract-provider::estimate: calculatedFee =', calculatedFee);
                         }
                         if (calculatedGas === undefined) {
                             calculatedGas = estimation.gasLimit;
-                            console.log('rpc-contract-provider::estimate: calculatedGas =', calculatedGas);
                         }
                         if (calculatedStorage === undefined) {
                             calculatedStorage = estimation.storageLimit;
-                            console.log('rpc-contract-provider::estimate: storageLimit =', storageLimit);
                         }
                         _b.label = 2;
                     case 2: return [2 /*return*/, {
@@ -339,12 +332,9 @@ var RpcContractProvider = /** @class */ (function (_super) {
                         return [4 /*yield*/, this.estimate(params, this.estimator.setDelegate.bind(this.estimator))];
                     case 2:
                         estimate = _b.sent();
-                        console.log('-'.repeat(20));
-                        console.log('rpc-contract-provider::getDelegateSignatureHash, estimate =', estimate);
                         return [4 /*yield*/, prepare_1.createSetDelegateOperation(__assign(__assign({}, params), estimate))];
                     case 3:
                         operation = _b.sent();
-                        console.log('rpc-contract-provider::getDelegateSignatureHash, operation =', operation);
                         _a = params.source;
                         if (_a) return [3 /*break*/, 5];
                         return [4 /*yield*/, this.signer.publicKeyHash()];

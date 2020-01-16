@@ -82,6 +82,7 @@ var constants_1 = require("../constants");
 var operation_emitter_1 = require("../operations/operation-emitter");
 var estimate_1 = require("./estimate");
 var prepare_1 = require("./prepare");
+var format_1 = require("../format");
 // RPC require a signature but do not verify it
 var SIGNATURE_STUB = 'edsigtkpiSSschcaCt9pUVrpNPf7TTcgvgDEDD6NCEHMy8NNQJCGnMfLZzYoQj74yLjo9wx6MPVV29CvVzgi7qEcEUok3k7AuMg';
 var RPCEstimateProvider = /** @class */ (function (_super) {
@@ -115,14 +116,7 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
                     case 0: return [4 /*yield*/, this.prepareAndForge(params)];
                     case 1:
                         _a = _d.sent(), opbytes = _a.opbytes, _b = _a.opOb, branch = _b.branch, contents = _b.contents;
-                        console.log('rpc-estimate-provider::createEstimate: params =', params);
-                        console.log('rpc-estimate-provider::createEstimate: defaultStorage =', defaultStorage);
-                        console.log('rpc-estimate-provider::createEstimate: minimumGas =', minimumGas);
-                        console.log('rpc-estimate-provider::createEstimate: opbytes =', opbytes);
-                        console.log('rpc-estimate-provider::createEstimate: branch =', branch);
-                        console.log('rpc-estimate-provider::createEstimate: contents =', contents);
                         operation = { branch: branch, contents: contents, signature: SIGNATURE_STUB };
-                        console.log('rpc-estimate-provider::createEstimate: operation =', operation);
                         return [4 /*yield*/, this.context.isAnyProtocolActive(constants_1.protocols['005'])];
                     case 2:
                         if (!_d.sent()) return [3 /*break*/, 4];
@@ -134,9 +128,7 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
                     case 4: return [4 /*yield*/, this.simulate(operation)];
                     case 5:
                         opResponse = (_d.sent()).opResponse;
-                        console.log('rpc-estimate-provider::createEstimate: opResponse =', opResponse);
                         operationResults = this.getOperationResult(opResponse, kind);
-                        console.log('rpc-estimate-provider::createEstimate: operationResults =', operationResults);
                         totalGas = 0;
                         totalStorage = 0;
                         operationResults.forEach(function (result) {
@@ -144,8 +136,6 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
                             totalStorage +=
                                 'paid_storage_size_diff' in result ? Number(result.paid_storage_size_diff) || 0 : 0;
                         });
-                        console.log('rpc-estimate-provider::createEstimate: totalGas =', totalGas);
-                        console.log('rpc-estimate-provider::createEstimate: totalStorage =', totalStorage);
                         return [2 /*return*/, new estimate_1.Estimate(Math.max(totalGas || 0, minimumGas), Number(totalStorage || 0) + defaultStorage, opbytes.length / 2)];
                 }
             });
@@ -187,17 +177,57 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
     RPCEstimateProvider.prototype.transfer = function (_a) {
         var fee = _a.fee, storageLimit = _a.storageLimit, gasLimit = _a.gasLimit, rest = __rest(_a, ["fee", "storageLimit", "gasLimit"]);
         return __awaiter(this, void 0, void 0, function () {
-            var pkh, op;
-            return __generator(this, function (_b) {
-                switch (_b.label) {
+            var pkh, mutezAmount, sourceBalancePromise, managerPromise, isNewImplicitAccountPromise, _b, sourceBalance, manager, isNewImplicitAccount, requireReveal, revealFee, _storageLimit, defaultParams, op;
+            return __generator(this, function (_c) {
+                switch (_c.label) {
                     case 0: return [4 /*yield*/, this.signer.publicKeyHash()];
                     case 1:
-                        pkh = _b.sent();
-                        return [4 /*yield*/, prepare_1.createTransferOperation(__assign(__assign({}, rest), this.DEFAULT_PARAMS))];
+                        pkh = _c.sent();
+                        mutezAmount = rest.mutez ? rest.amount.toString() : format_1.format('tz', 'mutez', rest.amount).toString();
+                        sourceBalancePromise = this.rpc.getBalance(pkh);
+                        managerPromise = this.rpc.getManagerKey(pkh);
+                        isNewImplicitAccountPromise = this.isNewImplicitAccount(rest.to);
+                        return [4 /*yield*/, Promise.all([sourceBalancePromise, managerPromise, isNewImplicitAccountPromise])];
                     case 2:
-                        op = _b.sent();
-                        console.log('rpc-estimate-provider::transfer: op =', op);
-                        return [2 /*return*/, this.createEstimate({ operation: op, source: pkh }, 'transaction', typeof storageLimit === 'number' ? storageLimit : constants_1.DEFAULT_STORAGE_LIMIT.TRANSFER)];
+                        _b = _c.sent(), sourceBalance = _b[0], manager = _b[1], isNewImplicitAccount = _b[2];
+                        requireReveal = !manager;
+                        revealFee = requireReveal ? constants_1.DEFAULT_FEE.REVEAL : 0;
+                        _storageLimit = isNewImplicitAccount ? (constants_1.DEFAULT_STORAGE_LIMIT.TRANSFER) : 0;
+                        defaultParams = {
+                            fee: sourceBalance.minus(Number(mutezAmount) + revealFee + _storageLimit * 1000).toNumber(),
+                            storageLimit: _storageLimit,
+                            gasLimit: constants_1.DEFAULT_GAS_LIMIT.TRANSFER
+                        };
+                        return [4 /*yield*/, prepare_1.createTransferOperation(__assign(__assign({}, rest), defaultParams))];
+                    case 3:
+                        op = _c.sent();
+                        return [2 /*return*/, this.createEstimate({ operation: op, source: pkh }, 'transaction', _storageLimit)];
+                }
+            });
+        });
+    };
+    RPCEstimateProvider.prototype.isNewImplicitAccount = function (address) {
+        return __awaiter(this, void 0, void 0, function () {
+            var pref, isImplicit, balance, e_1;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        pref = address.substring(0, 3);
+                        isImplicit = ['tz1', 'tz2', 'tz3'].includes(pref);
+                        if (!isImplicit) {
+                            return [2 /*return*/, false];
+                        }
+                        _a.label = 1;
+                    case 1:
+                        _a.trys.push([1, 3, , 4]);
+                        return [4 /*yield*/, this.rpc.getBalance(address)];
+                    case 2:
+                        balance = _a.sent();
+                        return [2 /*return*/, balance.eq(0)];
+                    case 3:
+                        e_1 = _a.sent();
+                        return [2 /*return*/, true];
+                    case 4: return [2 /*return*/];
                 }
             });
         });
@@ -218,13 +248,11 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
                     case 0: return [4 /*yield*/, this.rpc.getBalance(params.source)];
                     case 1:
                         sourceBalance = _b.sent();
-                        console.log('sourceBalance =', sourceBalance);
                         defaultParams = {
                             fee: sourceBalance.toNumber() - 1,
                             storageLimit: constants_1.DEFAULT_STORAGE_LIMIT.DELEGATION,
-                            gasLimit: constants_1.DEFAULT_GAS_LIMIT.DELEGATION
+                            gasLimit: constants_1.DEFAULT_GAS_LIMIT.DELEGATION,
                         };
-                        console.log('defaultParams =', defaultParams);
                         return [4 /*yield*/, prepare_1.createSetDelegateOperation(__assign(__assign({}, params), defaultParams))];
                     case 2:
                         op = _b.sent();

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-const crypto = require('crypto');
-const rp = require('request-promise');
+const { generateNewAccount, getBalance, transfer, transferAll } = require('./index');
+
 const program = require('commander');
 const fs = require('fs');
 const path = require('path');
@@ -14,12 +14,6 @@ const { Tezos, DEFAULT_GAS_LIMIT } = require('../packages/taquito/dist/lib/taqui
 const { prefix, b58cencode, b58cdecode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
 
 const CLIENT_DB_PATH = path.join(__dirname, 'client-db');
-const MINIMUM_FEE_BUFFER_MTZ = 28.8;
-
-const explorerApiUrl = {
-  babylonnet: 'https://api.babylonnet.tzstats.com',
-  mainnet: 'https://api.tzstats.com'
-};
 
 const rpcUrl = {
   babylonnet: 'https://rpcalpha.tzbeta.net/',
@@ -33,6 +27,11 @@ function ensureDirSync(dirpath) {
     if (err.code !== 'EEXIST') throw err;
   }
 }
+
+ensureDirSync(CLIENT_DB_PATH);
+const adapter = new FileSync(path.join(CLIENT_DB_PATH, 'db.json'));
+const db = low(adapter);
+db.defaults({ addresses: [] }).write();
 
 function logOp(op) {
   /* When an operation is from a fresh address (i.e. that hasn't sent yet), it includes two results - 'reveal' and 'transaction'.
@@ -106,70 +105,36 @@ function logOp(op) {
   }
 }
 
-ensureDirSync(CLIENT_DB_PATH);
-const adapter = new FileSync(path.join(CLIENT_DB_PATH, 'db.json'));
-const db = low(adapter);
-db.defaults({ addresses: [] }).write();
-
 program
   .command('address')
-  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
-  .action(async (options) => {
-    const privateKeyHex = crypto.randomBytes(32).toString('hex');
-    console.log('privateKeyHex =', privateKeyHex);
-    const privateKey = b58cencode(privateKeyHex, prefix['spsk']);
-    console.log('privateKey =', privateKey);
-    Tezos.setProvider({
-      signer: new InMemorySigner(privateKey),
-      rpc: rpcUrl[options.network || 'babylonnet']
-    });
-    const address = await Tezos.signer.publicKeyHash();
+  .alias('a')
+  .action(async () => {
+    const { privateKey, address } = await generateNewAccount();
     console.log(address);
     db.get('addresses').push({ address, privateKey }).write();
   });
 
 program
   .command('balance <address>')
+  .alias('b')
   .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
   .action(async (address, options) => {
-    Tezos.setProvider({
-      rpc: rpcUrl[options.network || 'babylonnet']
-    });
-    let balanceInMutez;
-    try {
-      balanceInMutez = await Tezos.tz.getBalance(address);
-    } catch (err) {
-      console.error('err =', err);
-    }
-    const balanceInXtz = Tezos.format('mutez', 'tz', balanceInMutez);
-    console.log(`${balanceInXtz} XTZ`);
+    const mutezBalance = await getBalance(address, options.network || 'babylonnet');
+    const xtzBalance = Tezos.format('mutez', 'tz', mutezBalance);
+    console.log(`${xtzBalance} XTZ`);
   });
 
 
 program
   .command('transfer <from> <to> <xtz_amount>')
+  .alias('t')
   .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
   .action(async (from, to, xtz_amount, options) => {
     const { privateKey } = db.get('addresses').find({address: from}).value();
-    Tezos.setProvider({
-      signer: new InMemorySigner(privateKey),
-      rpc: rpcUrl[options.network || 'babylonnet']
-    });
-    try {
-      console.log('#1');
-      const forgedBytes = await Tezos.contract.getTransferSignatureHash({ to, amount: xtz_amount});
-      console.log('forgedBytes =', JSON.stringify(forgedBytes, null, 2));
-      const {prefixSig, sbytes} = await Tezos.signer.sign(forgedBytes.opbytes, new Uint8Array([3]));
-      console.log('prefixSig =', prefixSig);
-      console.log('sbytes =', sbytes);
-      const op = await Tezos.contract.injectTransferSignatureAndBroadcast(forgedBytes, prefixSig, sbytes);
-      logOp(op);
-
-      const id = await op.confirmation();
-      console.log('id =', id);
-    } catch (err) {
-      console.error('err =', err);
-    }
+    const op = await transfer(privateKey, to, xtz_amount, options.network || 'babylonnet');
+    logOp(op);
+    const id = await op.confirmation();
+    console.log('id =', id);
   });
 
 program
@@ -179,60 +144,10 @@ program
   .action(async (from, to, options) => {
     const network = options.network || 'babylonnet';
     const { privateKey } = db.get('addresses').find({address: from}).value();
-    Tezos.setProvider({
-      signer: new InMemorySigner(privateKey),
-      rpc: rpcUrl[network]
-    });
-    try {
-      // 1. get balance
-      const balanceInMutez = await Tezos.tz.getBalance(from);
-      console.log('balanceInMutez =', balanceInMutez.toString());
-
-      // 2. mock with fake amount (in order to calculate the gas fee)
-      const mockMutezAmount = balanceInMutez.div(2).decimalPlaces(0).toNumber();
-      console.log('mockMutezAmount =', mockMutezAmount);
-      const mockForgedBytes = await Tezos.contract.getTransferSignatureHash({ to, amount: mockMutezAmount, mutez: true });
-      console.log('mockForgedBytes =', JSON.stringify(mockForgedBytes, null, 2));
-      const totalFee = mockForgedBytes.opOb.contents.reduce((acc, currContent) => {
-        return acc + parseInt(currContent.fee);
-      }, 0);
-      console.log('totalFee =', totalFee);
-
-      // 3. calculate storage limit to burn (0 if destination is active)
-      const shouldUseZeroStorage = await isAddressActive(to, network);
-      console.log('shouldUseZeroStorage =', shouldUseZeroStorage);
-      const totalStorageLimit = shouldUseZeroStorage ?
-        0 :
-        mockForgedBytes.opOb.contents.reduce((acc, currContent) => {
-          return acc + parseInt(currContent.storage_limit);
-        }, 0);
-      console.log('totalStorageLimit =', totalStorageLimit);
-
-      // 4. construct the new transaction with the entire balance minus the fees
-      const mutezAmount = balanceInMutez.minus(totalFee + Math.max(MINIMUM_FEE_BUFFER_MTZ, totalStorageLimit) * 1000) // totalFee in mutez (1e-6), totalStorageLimit in mtez (1e-3)
-        .toNumber();
-      console.log('mutezAmount =', mutezAmount);
-      const rest = shouldUseZeroStorage ? { storageLimit: 0 } : {};
-      const forgedBytes = await Tezos.contract.getTransferSignatureHash({
-        to,
-        amount: mutezAmount,
-        mutez: true,
-        ...rest
-      });
-      console.log('forgedBytes =', JSON.stringify(forgedBytes, null, 2));
-
-      // 5. sign
-      const {prefixSig, sbytes} = await Tezos.signer.sign(forgedBytes.opbytes, new Uint8Array([3]));
-      console.log('prefixSig =', prefixSig);
-      console.log('sbytes =', sbytes);
-      const op = await Tezos.contract.injectTransferSignatureAndBroadcast(forgedBytes, prefixSig, sbytes);
-      logOp(op);
-
-      const id = await op.confirmation();
-      console.log('id =', id);
-    } catch (err) {
-      console.error('err =', err);
-    }
+    const op = await transferAll(privateKey, to, network);
+    logOp(op);
+    const id = await op.confirmation();
+    console.log('id =', id);
   });
 
 program

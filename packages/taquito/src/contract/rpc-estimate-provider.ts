@@ -5,7 +5,7 @@ import {
   PreapplyResponse,
   RPCRunOperationParam,
 } from '@taquito/rpc';
-import { DEFAULT_STORAGE_LIMIT, protocols, DEFAULT_GAS_LIMIT } from '../constants';
+import { DEFAULT_STORAGE_LIMIT, protocols, DEFAULT_GAS_LIMIT, DEFAULT_FEE } from '../constants';
 import { OperationEmitter } from '../operations/operation-emitter';
 import {
   DelegateParams,
@@ -22,6 +22,7 @@ import {
   createSetDelegateOperation,
   createTransferOperation,
 } from './prepare';
+import { format } from '../format';
 
 // RPC require a signature but do not verify it
 const SIGNATURE_STUB =
@@ -60,23 +61,14 @@ export class RPCEstimateProvider extends OperationEmitter implements EstimationP
       opbytes,
       opOb: { branch, contents },
     } = await this.prepareAndForge(params);
-    console.log('rpc-estimate-provider::createEstimate: params =', params);
-    console.log('rpc-estimate-provider::createEstimate: defaultStorage =', defaultStorage);
-    console.log('rpc-estimate-provider::createEstimate: minimumGas =', minimumGas);
-    console.log('rpc-estimate-provider::createEstimate: opbytes =', opbytes);
-    console.log('rpc-estimate-provider::createEstimate: branch =', branch);
-    console.log('rpc-estimate-provider::createEstimate: contents =', contents);
 
     let operation: RPCRunOperationParam = { branch, contents, signature: SIGNATURE_STUB };
-    console.log('rpc-estimate-provider::createEstimate: operation =', operation);
     if (await this.context.isAnyProtocolActive(protocols['005'])) {
       operation = { operation, chain_id: await this.rpc.getChainId() };
     }
 
     const { opResponse } = await this.simulate(operation);
-    console.log('rpc-estimate-provider::createEstimate: opResponse =', opResponse);
     const operationResults = this.getOperationResult(opResponse, kind);
-    console.log('rpc-estimate-provider::createEstimate: operationResults =', operationResults);
 
     let totalGas = 0;
     let totalStorage = 0;
@@ -85,8 +77,6 @@ export class RPCEstimateProvider extends OperationEmitter implements EstimationP
       totalStorage +=
         'paid_storage_size_diff' in result ? Number(result.paid_storage_size_diff) || 0 : 0;
     });
-    console.log('rpc-estimate-provider::createEstimate: totalGas =', totalGas);
-    console.log('rpc-estimate-provider::createEstimate: totalStorage =', totalStorage);
 
     return new Estimate(
       Math.max(totalGas || 0, minimumGas),
@@ -127,17 +117,58 @@ export class RPCEstimateProvider extends OperationEmitter implements EstimationP
    * @param TransferOperation Originate operation parameter
    */
   async transfer({ fee, storageLimit, gasLimit, ...rest }: TransferParams) {
+    // TODO - gather all promises into one Promise.all
     const pkh = await this.signer.publicKeyHash();
+
+    // we want to make the initial fee estimation as tight as possible because otherwise the estimation fails here.
+    const mutezAmount = rest.mutez
+      ? rest.amount.toString()
+      : format('tz', 'mutez', rest.amount).toString();
+
+    const sourceBalancePromise = this.rpc.getBalance(pkh);
+    const managerPromise = this.rpc.getManagerKey(pkh);
+    const isNewImplicitAccountPromise = this.isNewImplicitAccount(rest.to);
+
+    const [sourceBalance, manager, isNewImplicitAccount] = await Promise.all([
+      sourceBalancePromise,
+      managerPromise,
+      isNewImplicitAccountPromise,
+    ]);
+
+    // A transfer from an unrevealed account will require a an additional fee of 0.00142tz (reveal operation)
+    const requireReveal = !manager;
+    const revealFee = requireReveal ? DEFAULT_FEE.REVEAL : 0;
+
+    /* A transfer to a new implicit account would require burning funds for its storage
+       https://tezos.stackexchange.com/questions/956/burn-fee-for-empty-account */
+    const _storageLimit = isNewImplicitAccount ? DEFAULT_STORAGE_LIMIT.TRANSFER : 0;
+
+    const defaultParams = {
+      fee: sourceBalance.minus(Number(mutezAmount) + revealFee + _storageLimit * 1000).toNumber(), // maximum possible
+      storageLimit: _storageLimit,
+      gasLimit: DEFAULT_GAS_LIMIT.TRANSFER,
+    };
+
     const op = await createTransferOperation({
       ...rest,
-      ...this.DEFAULT_PARAMS,
+      ...defaultParams,
     });
-    console.log('rpc-estimate-provider::transfer: op =', op);
-    return this.createEstimate(
-      { operation: op, source: pkh },
-      'transaction',
-      typeof storageLimit === 'number' ? storageLimit : DEFAULT_STORAGE_LIMIT.TRANSFER
-    );
+    return this.createEstimate({ operation: op, source: pkh }, 'transaction', _storageLimit);
+  }
+
+  async isNewImplicitAccount(address: string) {
+    let pref = address.substring(0, 3);
+    const isImplicit = ['tz1', 'tz2', 'tz3'].includes(pref); // assuming validity check already performed
+    if (!isImplicit) {
+      return false;
+    }
+
+    try {
+      const balance = await this.rpc.getBalance(address);
+      return balance.eq(0);
+    } catch (e) {
+      return true;
+    }
   }
 
   /**
@@ -150,13 +181,11 @@ export class RPCEstimateProvider extends OperationEmitter implements EstimationP
    */
   async setDelegate(params: DelegateParams) {
     const sourceBalance = await this.rpc.getBalance(params.source);
-    console.log('sourceBalance =', sourceBalance);
     const defaultParams = {
       fee: sourceBalance.toNumber() - 1, // leave minimum amount possible to delegate
       storageLimit: DEFAULT_STORAGE_LIMIT.DELEGATION,
       gasLimit: DEFAULT_GAS_LIMIT.DELEGATION,
     };
-    console.log('defaultParams =', defaultParams);
     const op = await createSetDelegateOperation({ ...params, ...defaultParams });
     const sourceOrDefault = params.source || (await this.signer.publicKeyHash());
     return this.createEstimate(
