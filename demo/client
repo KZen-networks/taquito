@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { generateNewAccount, getBalance, transfer, transferAll } = require('./index');
+const { delegate, generateNewAccount, getBalance, transfer, transferAll } = require('./index');
 
 const program = require('commander');
 const fs = require('fs');
@@ -176,29 +176,10 @@ program
   .option('-t, --trackingId [id]', '3 digits number to signal delegator through gas limit suffix')
   .action(async (from, to, options) => {
     const { privateKey } = db.get('addresses').find({address: from}).value();
-    Tezos.setProvider({
-      signer: new InMemorySigner(privateKey),
-      rpc: rpcUrl[options.network || 'babylonnet']
-    });
-    try {
-      const delegateParams = { source: from, delegate: to };
-      if (options.trackingId) {
-        delegateParams.gasLimit = Math.ceil(DEFAULT_GAS_LIMIT.DELEGATION / 1000) * 1000 + parseInt(options.trackingId);
-      }
-
-      const forgedBytes = await Tezos.contract.getDelegateSignatureHash(delegateParams);
-      console.log('forgedBytes =', JSON.stringify(forgedBytes, null, 2));
-      const {prefixSig, sbytes} = await Tezos.signer.sign(forgedBytes.opbytes, new Uint8Array([3]));
-      console.log('prefixSig =', prefixSig);
-      console.log('sbytes =', sbytes);
-      const op = await Tezos.contract.injectDelegateSignatureAndBroadcast(forgedBytes, prefixSig, sbytes);
-      logOp(op);
-
-      const id = await op.confirmation();
-      console.log('id =', id);
-    } catch (err) {
-      console.error('err =', err);
-    }
+    const op = await delegate(privateKey, to, options.network || 'babylonnet', options.trackingId);
+    logOp(op);
+    const id = await op.confirmation();
+    console.log('id =', id);
   });
 
 program

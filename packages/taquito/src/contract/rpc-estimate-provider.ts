@@ -180,9 +180,17 @@ export class RPCEstimateProvider extends OperationEmitter implements EstimationP
    * @param Estimate
    */
   async setDelegate(params: DelegateParams) {
-    const sourceBalance = await this.rpc.getBalance(params.source);
+    const sourceBalancePromise = this.rpc.getBalance(params.source);
+    const managerPromise = this.rpc.getManagerKey(params.source);
+
+    const [sourceBalance, manager] = await Promise.all([sourceBalancePromise, managerPromise]);
+
+    // A transfer from an unrevealed account will require a an additional fee of 0.00142tz (reveal operation)
+    const requireReveal = !manager;
+    const revealFee = requireReveal ? DEFAULT_FEE.REVEAL : 0;
+
     const defaultParams = {
-      fee: sourceBalance.toNumber() - 1, // leave minimum amount possible to delegate
+      fee: sourceBalance.toNumber() - 1 - revealFee, // leave minimum amount possible to delegate
       storageLimit: DEFAULT_STORAGE_LIMIT.DELEGATION,
       gasLimit: DEFAULT_GAS_LIMIT.DELEGATION,
     };

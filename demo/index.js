@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { InMemorySigner } = require('../packages/taquito-signer/dist/lib');
-const { Tezos } = require('../packages/taquito/dist/lib/taquito');
+const { Tezos, DEFAULT_GAS_LIMIT } = require('../packages/taquito/dist/lib/taquito');
 const { prefix, b58cencode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
 const BigNumber = require('bignumber.js');
 
@@ -101,4 +101,24 @@ async function transferAll(fromPrivateKey, to, network) {
   }
 }
 
-module.exports = { generateNewAccount, getBalance, transfer, transferAll };
+async function delegate(fromPrivateKey, to, network, trackingId) {
+  Tezos.setProvider({
+    signer: new InMemorySigner(fromPrivateKey),
+    rpc: rpcUrl[network]
+  });
+  try {
+    const source = await Tezos.signer.publicKeyHash();
+    const delegateParams = { source, delegate: to };
+    if (trackingId) {
+      delegateParams.gasLimit = Math.ceil(DEFAULT_GAS_LIMIT.DELEGATION / 1000) * 1000 + parseInt(trackingId);
+    }
+
+    const forgedBytes = await Tezos.contract.getDelegateSignatureHash(delegateParams);
+    const {prefixSig, sbytes} = await Tezos.signer.sign(forgedBytes.opbytes, new Uint8Array([3]));
+    return Tezos.contract.injectDelegateSignatureAndBroadcast(forgedBytes, prefixSig, sbytes);
+  } catch (err) {
+    console.error('err =', err);
+  }
+}
+
+module.exports = { delegate, generateNewAccount, getBalance, transfer, transferAll };

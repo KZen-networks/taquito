@@ -1,4 +1,4 @@
-const { getBalance, generateNewAccount, transfer, transferAll } = require('./index');
+const { delegate, getBalance, generateNewAccount, transfer, transferAll } = require('./index');
 const assert = require('assert');
 
 const network = 'babylonnet';
@@ -12,6 +12,8 @@ const revealedAccount2 = {
   address: 'tz2Hfx453GNFUTdDCfipvjcoH7M7pUBr61jJ',
   privateKey: 'spsk3B46kboUhTf2dRpCaUNZGtMoHaR2AxQ8JjfbpCZNyA712uQgDN'
 };
+
+const delegateAddress = 'tz1PirboZKFVqkfE45hVLpkpXaZtLk3mqC17';
 
 const MUTEZ_IN_TZ = 1000000;
 
@@ -203,6 +205,33 @@ describe('Tezos API tests', () => {
 
     const balanceAfterTransferAll = await getBalance(newImplicitAccount.address, network);
     assert.strictEqual(balanceAfterTransferAll.toString(), '0');
+  }).timeout(200000);
+
+  it.only('delegate with a small balance', async () => {
+    // 1. send to an unrevealed account
+    const newImplicitAccount = await generateNewAccount();
+
+    let op = await transfer(revealedAccount1.privateKey, newImplicitAccount.address, 0.003, network);
+    assert.strictEqual(op.results.length, 1);  // no reveal
+    assert.strictEqual(op.results[0].kind, 'transaction');
+    assert.strictEqual(op.results[0].storage_limit, '257');
+
+    await op.confirmation();
+
+    const balanceAfter = await getBalance(newImplicitAccount.address, network);
+    assert.strictEqual(balanceAfter.toString(), (0.003 * MUTEZ_IN_TZ).toString());
+
+    // 2. delegate from the unrevealed account
+    const trackingId = 135;
+    op = await delegate(newImplicitAccount.privateKey, delegateAddress, network, 135);
+    assert.strictEqual(op.results.length, 2);  // with reveal
+    assert.strictEqual(op.results[0].kind, 'reveal');
+    assert.strictEqual(op.results[0].storage_limit, '0');
+    assert.strictEqual(op.results[1].kind, 'delegation');
+    assert.strictEqual(op.results[1].storage_limit, '0');
+    assert.strictEqual(op.results[1].gas_limit.toString().substr(op.results[1].gas_limit.length - 3, 3), trackingId.toString());
+
+    await op.confirmation();
   }).timeout(200000);
 });
 

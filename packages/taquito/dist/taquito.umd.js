@@ -2030,20 +2030,26 @@
                         case 0: return [4 /*yield*/, this.signer.publicKeyHash()];
                         case 1:
                             pkh = _c.sent();
-                            mutezAmount = rest.mutez ? rest.amount.toString() : format('tz', 'mutez', rest.amount).toString();
+                            mutezAmount = rest.mutez
+                                ? rest.amount.toString()
+                                : format('tz', 'mutez', rest.amount).toString();
                             sourceBalancePromise = this.rpc.getBalance(pkh);
                             managerPromise = this.rpc.getManagerKey(pkh);
                             isNewImplicitAccountPromise = this.isNewImplicitAccount(rest.to);
-                            return [4 /*yield*/, Promise.all([sourceBalancePromise, managerPromise, isNewImplicitAccountPromise])];
+                            return [4 /*yield*/, Promise.all([
+                                    sourceBalancePromise,
+                                    managerPromise,
+                                    isNewImplicitAccountPromise,
+                                ])];
                         case 2:
                             _b = _c.sent(), sourceBalance = _b[0], manager = _b[1], isNewImplicitAccount = _b[2];
                             requireReveal = !manager;
                             revealFee = requireReveal ? exports.DEFAULT_FEE.REVEAL : 0;
-                            _storageLimit = isNewImplicitAccount ? (exports.DEFAULT_STORAGE_LIMIT.TRANSFER) : 0;
+                            _storageLimit = isNewImplicitAccount ? exports.DEFAULT_STORAGE_LIMIT.TRANSFER : 0;
                             defaultParams = {
                                 fee: sourceBalance.minus(Number(mutezAmount) + revealFee + _storageLimit * 1000).toNumber(),
                                 storageLimit: _storageLimit,
-                                gasLimit: exports.DEFAULT_GAS_LIMIT.TRANSFER
+                                gasLimit: exports.DEFAULT_GAS_LIMIT.TRANSFER,
                             };
                             return [4 /*yield*/, createTransferOperation(__assign(__assign({}, rest), defaultParams))];
                         case 3:
@@ -2089,28 +2095,36 @@
          */
         RPCEstimateProvider.prototype.setDelegate = function (params) {
             return __awaiter(this, void 0, void 0, function () {
-                var sourceBalance, defaultParams, op, sourceOrDefault, _a;
-                return __generator(this, function (_b) {
-                    switch (_b.label) {
-                        case 0: return [4 /*yield*/, this.rpc.getBalance(params.source)];
+                var sourceBalancePromise, managerPromise, _a, sourceBalance, manager, requireReveal, revealFee, defaultParams, op, sourceOrDefault, _b;
+                return __generator(this, function (_c) {
+                    switch (_c.label) {
+                        case 0:
+                            sourceBalancePromise = this.rpc.getBalance(params.source);
+                            managerPromise = this.rpc.getManagerKey(params.source);
+                            return [4 /*yield*/, Promise.all([
+                                    sourceBalancePromise,
+                                    managerPromise
+                                ])];
                         case 1:
-                            sourceBalance = _b.sent();
+                            _a = _c.sent(), sourceBalance = _a[0], manager = _a[1];
+                            requireReveal = !manager;
+                            revealFee = requireReveal ? exports.DEFAULT_FEE.REVEAL : 0;
                             defaultParams = {
-                                fee: sourceBalance.toNumber() - 1,
+                                fee: sourceBalance.toNumber() - 1 - revealFee,
                                 storageLimit: exports.DEFAULT_STORAGE_LIMIT.DELEGATION,
                                 gasLimit: exports.DEFAULT_GAS_LIMIT.DELEGATION,
                             };
                             return [4 /*yield*/, createSetDelegateOperation(__assign(__assign({}, params), defaultParams))];
                         case 2:
-                            op = _b.sent();
-                            _a = params.source;
-                            if (_a) return [3 /*break*/, 4];
+                            op = _c.sent();
+                            _b = params.source;
+                            if (_b) return [3 /*break*/, 4];
                             return [4 /*yield*/, this.signer.publicKeyHash()];
                         case 3:
-                            _a = (_b.sent());
-                            _b.label = 4;
+                            _b = (_c.sent());
+                            _c.label = 4;
                         case 4:
-                            sourceOrDefault = _a;
+                            sourceOrDefault = _b;
                             return [2 /*return*/, this.createEstimate({ operation: op, source: sourceOrDefault }, 'delegation', exports.DEFAULT_STORAGE_LIMIT.DELEGATION, 
                                 // Delegation have a minimum gas cost
                                 exports.DEFAULT_GAS_LIMIT.DELEGATION)];
