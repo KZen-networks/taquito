@@ -2,22 +2,28 @@
 
 const { delegate, generateNewAccount, getBalance, transfer, transferAll } = require('./index');
 
+const rp = require('request-promise');
 const program = require('commander');
 const fs = require('fs');
 const path = require('path');
 const low = require('lowdb');
 const FileSync = require('lowdb/adapters/FileSync');
 
-const { InMemorySigner, PublicOnlySigner } = require('../packages/taquito-signer/dist/lib');
+const { PublicOnlySigner } = require('../packages/taquito-signer/dist/lib');
 
-const { Tezos, DEFAULT_GAS_LIMIT } = require('../packages/taquito/dist/lib/taquito');
-const { prefix, b58cencode, b58cdecode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
+const { Tezos } = require('../packages/taquito/dist/lib/taquito');
+const { prefix, b58cdecode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
 
 const CLIENT_DB_PATH = path.join(__dirname, 'client-db');
 
 const rpcUrl = {
-  babylonnet: 'https://rpcalpha.tzbeta.net/',
+  babylonnet: 'https://rpcalpha.tzbeta.net',
   mainnet: 'https://mainnet.tezrpc.me'
+};
+
+const explorerUrl = {
+  babylonnet: 'https://api.babylon.tzkt.io',
+  mainnet: 'https://api.tzkt.io'
 };
 
 function ensureDirSync(dirpath) {
@@ -257,6 +263,21 @@ program
     } catch (e) {
       console.error(e);
     }
+  });
+
+program
+  .command('history <address>')
+  .alias('h')
+  .description('get past operations of a given address')
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (address, options) => {
+    const network = options.network || 'babylonnet';
+    const uri = `${explorerUrl[network]}/v1/accounts/${address}/operations`;
+    const res = await rp.get({
+      uri,
+      json: true
+    });
+    console.log('res =', res);
   });
 
 async function isAddressActive(address, network) {
