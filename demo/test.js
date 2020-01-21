@@ -207,7 +207,46 @@ describe('Tezos API tests', () => {
     assert.strictEqual(balanceAfterTransferAll.toString(), '0');
   }).timeout(200000);
 
-  it.only('delegate with a small balance', async () => {
+  it('transfer all from revealed account to new implicit account', async () => {
+    // 1. send to an unrevealed account
+    const newImplicitAccount = await generateNewAccount();
+
+    let op = await transfer(revealedAccount1.privateKey, newImplicitAccount.address, 1, network);
+    assert.strictEqual(op.results.length, 1);  // no reveal
+    assert.strictEqual(op.results[0].kind, 'transaction');
+    assert.strictEqual(op.results[0].storage_limit, '257');
+
+    await op.confirmation();
+
+    const balanceAfter = await getBalance(newImplicitAccount.address, network);
+    assert.strictEqual(balanceAfter.toString(), MUTEZ_IN_TZ.toString());
+
+    // 2. transfer from the unrevealed (in order to reveal)
+    op = await transfer(newImplicitAccount.privateKey, revealedAccount1.address, 0.01, network);
+    assert.strictEqual(op.results.length, 2);  // with reveal
+    assert.strictEqual(op.results[0].kind, 'reveal');
+    assert.strictEqual(op.results[0].storage_limit, '0');
+    assert.strictEqual(op.results[1].kind, 'transaction');
+    assert.strictEqual(op.results[1].storage_limit, '0');
+
+    await op.confirmation();
+
+    // 3. create a second new implicit account
+    const newImplicitAccount2 = await generateNewAccount();
+
+    // 4. transfer all from the now revealed account to a new implicit account
+    op = await transferAll(newImplicitAccount.privateKey, newImplicitAccount2.address, network);
+    assert.strictEqual(op.results.length, 1);  // no reveal
+    assert.strictEqual(op.results[0].kind, 'transaction');
+    assert.strictEqual(op.results[0].storage_limit, '257');
+
+    await op.confirmation();
+
+    const balanceAfterTransferAll = await getBalance(newImplicitAccount.address, network);
+    assert.strictEqual(balanceAfterTransferAll.toString(), '0');
+  }).timeout(200000);
+
+  it('delegate with a small balance', async () => {
     // 1. send to an unrevealed account
     const newImplicitAccount = await generateNewAccount();
 
