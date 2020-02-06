@@ -8,8 +8,6 @@ const path = require('path');
 const low = require('lowdb');
 const FileSync = require('lowdb/adapters/FileSync');
 
-const { TwoPartySigner } = require('../packages/taquito-signer/dist/lib');
-
 const { Tezos } = require('../packages/taquito/dist/lib/taquito');
 const { prefix, b58cdecode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
 
@@ -63,7 +61,6 @@ program
   .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
   .action(async (from, to, xtz_amount, options) => {
     const { share } = db.get('addresses').find({address: from}).value();
-    console.log('typeof share =', typeof share);
     const op = await transfer(share, to, xtz_amount, options.network || 'babylonnet');
     logOp(op);
     const id = await op.confirmation();
