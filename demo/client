@@ -8,10 +8,10 @@ const path = require('path');
 const low = require('lowdb');
 const FileSync = require('lowdb/adapters/FileSync');
 
-const { InMemorySigner, PublicOnlySigner } = require('../packages/taquito-signer/dist/lib');
+const { TwoPartySigner } = require('../packages/taquito-signer/dist/lib');
 
-const { Tezos, DEFAULT_GAS_LIMIT } = require('../packages/taquito/dist/lib/taquito');
-const { prefix, b58cencode, b58cdecode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
+const { Tezos } = require('../packages/taquito/dist/lib/taquito');
+const { prefix, b58cdecode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
 
 const CLIENT_DB_PATH = path.join(__dirname, 'client-db');
 
@@ -34,84 +34,16 @@ const db = low(adapter);
 db.defaults({ addresses: [] }).write();
 
 function logOp(op) {
-  /* When an operation is from a fresh address (i.e. that hasn't sent yet), it includes two results - 'reveal' and 'transaction'.
-   *
-   * Example as viewed in https://babylonnet.tzstats.com/opT57vGYVLssoFntRMzurUGCn6xUGkQKDYoVHTsZDkwpP4UdKwK :
-   *
-   * TransactionOperation {
-      hash: 'opT57vGYVLssoFntRMzurUGCn6xUGkQKDYoVHTsZDkwpP4UdKwK',
-      raw:
-       { opbytes:
-          '5b329629c3a6983b045522638fd96abef3de38b91f21d0b9b6c1a0e2c8539eb36b018bff89a463cfcbfb888609c533798bb02937b5be8c0bb0dd08e852ac0201038248829f1ed123b3f859df0ed8fbddf02bb2da9a2d5f303f366859587220f5266c018bff89a463cfcbfb888609c533798bb02937b5beec0ab1dd08c350ac02a08d06000192586940eed7475af41cb746060c57fc91fafda700af6e012721916bf43a217dd9a1990232976bf5ba050278fcf691a2ab28c631dc531e88f977978564cac5248598cc95fc7e30588cbb076df977dbf907d41fb922',
-         opOb:
-          { branch: 'BLQSrbq14i1PkEMRMvRp7yKYLuXUtH5yHd12pzJB6KAEFJj1vXc',
-            contents: [Array],
-            protocol: 'PsBabyM1eUXZseaJdmXFApDSBqj8YBfwELoxZHHW77EMcAbbwAS',
-            signature:
-             'spsig1Um9DuRxcVPSY6xQzng95ZhbS76XRZgG32xvzqypS5kbfJZh45ceKCNA5krtHgHgA41zyG4HEqedBGWweUjAWAQ5bV3m5y' },
-         counter: 143023 },
-      results:
-       [ { kind: 'reveal',
-           source: 'tz2M5Ui4xNtunJywkdpa5JYcX6LCZySbxJFR',
-           fee: '1420',
-           counter: '143024',
-           gas_limit: '10600',
-           storage_limit: '300',
-           public_key: 'sppk7cEkwcib2wbKwpywZBVzcGsbtdFXohhAXMCSWhhRipxDbvdPsFQ',
-           metadata: [Object] },
-         { kind: 'transaction',
-           source: 'tz2M5Ui4xNtunJywkdpa5JYcX6LCZySbxJFR',
-           fee: '1388',
-           counter: '143025',
-           gas_limit: '10307',
-           storage_limit: '300',
-           amount: '100000',
-           destination: 'tz2Mf3EFuVEyyz1osU6yc9XoBFnpZubWiSDP',
-           metadata: [Object] } ],
-      params:
-       { kind: 'transaction',
-         fee: 1388,
-         gas_limit: 10307,
-         storage_limit: 300,
-         amount: '100000',
-         destination: 'tz2Mf3EFuVEyyz1osU6yc9XoBFnpZubWiSDP' },
-      source: 'tz2M5Ui4xNtunJywkdpa5JYcX6LCZySbxJFR' }
-   */
-
-  function sumFieldValues(fieldName) {
-    return op.results.reduce((sum, currResult) => {
-      return sum + parseInt(currResult[fieldName]);
-    }, 0);
-  }
-
-  console.log(`hash = ${op.hash}`);
-  console.log(`gas_limit = ${sumFieldValues('gas_limit')}`);
-  console.log(`fee = ${Tezos.format('mutez', 'tz', sumFieldValues('fee'))} XTZ`);
-  const transactionResult = op.results.find(res => res.kind === 'transaction');
-  if (transactionResult) {
-    console.log('--transaction--');
-    console.log(`source = ${transactionResult.source}`);
-    console.log(`amount = ${Tezos.format('mutez', 'tz', transactionResult.amount)} XTZ`);
-    console.log(`destination = ${transactionResult.destination}`);
-    console.log(`metadata = ${JSON.stringify(transactionResult.metadata)}`);
-  } else {
-    const delegateResult = op.results.find(res => res.kind === 'delegation');
-    if (delegateResult) {
-      console.log('--delegation--');
-      console.log(`source = ${delegateResult.source}`);
-      console.log(`delegate = ${delegateResult.delegate}`);
-      console.log(`metadata = ${JSON.stringify(delegateResult.metadata)}`);
-    }
-  }
+  console.log(`broadcasted, hash: ${op.hash}`);
 }
 
 program
   .command('address')
   .alias('a')
   .action(async () => {
-    const { privateKey, address } = await generateNewAccount();
+    const { share, address } = await generateNewAccount();
     console.log(address);
-    db.get('addresses').push({ address, privateKey }).write();
+    db.get('addresses').push({ address, share }).write();
   });
 
 program
@@ -130,11 +62,12 @@ program
   .alias('t')
   .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
   .action(async (from, to, xtz_amount, options) => {
-    const { privateKey } = db.get('addresses').find({address: from}).value();
-    const op = await transfer(privateKey, to, xtz_amount, options.network || 'babylonnet');
+    const { share } = db.get('addresses').find({address: from}).value();
+    console.log('typeof share =', typeof share);
+    const op = await transfer(share, to, xtz_amount, options.network || 'babylonnet');
     logOp(op);
     const id = await op.confirmation();
-    console.log('id =', id);
+    console.log(`confirmed, block: ${id}`);
   });
 
 program
@@ -143,30 +76,11 @@ program
   .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
   .action(async (from, to, options) => {
     const network = options.network || 'babylonnet';
-    const { privateKey } = db.get('addresses').find({address: from}).value();
-    const op = await transferAll(privateKey, to, network);
+    const { share } = db.get('addresses').find({address: from}).value();
+    const op = await transferAll(share, to, network);
     logOp(op);
     const id = await op.confirmation();
-    console.log('id =', id);
-  });
-
-program
-  .command('get-transfer-hash <from_x> <from_y> <to> <xtz_amount>')
-  .alias('gth')
-  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
-  .action(async (fromX, fromY, to, xtz_amount, options) => {
-    const publicKey = {x: fromX, y: fromY};
-    Tezos.setProvider({
-      signer: new PublicOnlySigner(publicKey),
-      rpc: rpcUrl[options.network || 'babylonnet']
-    });
-    try {
-      console.log('#1');
-      const forgedBytes = await Tezos.contract.getTransferSignatureHash({ to, amount: xtz_amount});
-      console.log('forgedBytes =', JSON.stringify(forgedBytes, null, 2));
-    } catch (err) {
-      console.error('err =', err);
-    }
+    console.log(`confirmed, block: ${id}`);
   });
 
 program
@@ -175,26 +89,11 @@ program
   .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
   .option('-t, --trackingId [id]', '3 digits number to signal delegator through gas limit suffix')
   .action(async (from, to, options) => {
-    const { privateKey } = db.get('addresses').find({address: from}).value();
-    const op = await delegate(privateKey, to, options.network || 'babylonnet', options.trackingId);
+    const { share } = db.get('addresses').find({address: from}).value();
+    const op = await delegate(share, to, options.network || 'babylonnet', options.trackingId);
     logOp(op);
     const id = await op.confirmation();
-    console.log('id =', id);
-  });
-
-program
-  .command('get-delegate-hash <from_x> <from_y> <to>')
-  .description('Delegate funds to a baker account')
-  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
-  .action(async (fromX, fromY, to, options) => {
-    const publicKey = {x: fromX, y: fromY};
-    Tezos.setProvider({
-      signer: new PublicOnlySigner(publicKey),
-      rpc: rpcUrl[options.network || 'babylonnet']
-    });
-
-    const forgedBytes = await Tezos.contract.getDelegateSignatureHash({source: from, delegate: to});
-    console.log('forgedBytes =', forgedBytes);
+    console.log(`confirmed, block: ${id}`);
   });
 
 program

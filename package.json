@@ -93,6 +93,7 @@
     ]
   },
   "dependencies": {
+    "@kzen-networks/thresh-sig": "^0.3.8",
     "bignumber.js": "^9.0.0",
     "lowdb": "^1.0.0",
     "request": "^2.88.0",

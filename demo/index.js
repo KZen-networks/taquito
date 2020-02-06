@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { InMemorySigner } = require('../packages/taquito-signer/dist/lib');
+const { TwoPartySigner, EcdsaParty2Share } = require('../packages/taquito-signer/dist/lib');
 const { Tezos, DEFAULT_GAS_LIMIT } = require('../packages/taquito/dist/lib/taquito');
 const { prefix, b58cencode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
 const BigNumber = require('bignumber.js');
@@ -21,18 +21,18 @@ async function getBalance(address, network) {
 }
 
 async function generateNewAccount() {
-  const privateKeyHex = crypto.randomBytes(32).toString('hex');
-  const privateKey = b58cencode(privateKeyHex, prefix['spsk']);
   Tezos.setProvider({
-    signer: new InMemorySigner(privateKey)
+    signer: new TwoPartySigner()
   });
   const address = await Tezos.signer.publicKeyHash();
-  return { privateKey, address };
+  const share = JSON.parse(await Tezos.signer.secretKey());
+  return { share, address };
 }
 
-async function transfer(fromPrivateKey, to, xtzAmount, network) {
+async function transfer(fromParty2Share, to, xtzAmount, network) {
+  const party2Share = EcdsaParty2Share.fromPlain(fromParty2Share);
   Tezos.setProvider({
-    signer: new InMemorySigner(fromPrivateKey),
+    signer: new TwoPartySigner({ party2Share }),
     rpc: rpcUrl[network]
   });
   const from = await Tezos.signer.publicKeyHash();
@@ -61,9 +61,9 @@ async function transfer(fromPrivateKey, to, xtzAmount, network) {
   }
 }
 
-async function transferAll(fromPrivateKey, to, network) {
+async function transferAll(fromParty2Share, to, network) {
   Tezos.setProvider({
-    signer: new InMemorySigner(fromPrivateKey),
+    signer: new TwoPartySigner({ party2Share: EcdsaParty2Share.fromPlain(fromParty2Share) }),
     rpc: rpcUrl[network]
   });
   const from = await Tezos.signer.publicKeyHash();
@@ -101,9 +101,9 @@ async function transferAll(fromPrivateKey, to, network) {
   }
 }
 
-async function delegate(fromPrivateKey, to, network, trackingId) {
+async function delegate(fromParty2Share, to, network, trackingId) {
   Tezos.setProvider({
-    signer: new InMemorySigner(fromPrivateKey),
+    signer: new TwoPartySigner({ party2Share: EcdsaParty2Share.fromPlain(fromParty2Share) }),
     rpc: rpcUrl[network]
   });
   try {

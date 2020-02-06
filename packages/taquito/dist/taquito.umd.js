@@ -2101,10 +2101,7 @@
                         case 0:
                             sourceBalancePromise = this.rpc.getBalance(params.source);
                             managerPromise = this.rpc.getManagerKey(params.source);
-                            return [4 /*yield*/, Promise.all([
-                                    sourceBalancePromise,
-                                    managerPromise
-                                ])];
+                            return [4 /*yield*/, Promise.all([sourceBalancePromise, managerPromise])];
                         case 1:
                             _a = _c.sent(), sourceBalance = _a[0], manager = _a[1];
                             requireReveal = !manager;

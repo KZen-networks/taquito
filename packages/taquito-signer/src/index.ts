@@ -1,2 +1,2 @@
 export * from './taquito-signer';
-export * from './public-only-signer';
+export * from './two-party-signer';
