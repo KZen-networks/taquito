@@ -1,0 +1,170 @@
+#!/usr/bin/env node
+
+const { delegate, generateNewAccount, getBalance, transfer, transferAll } = require('./index');
+
+const program = require('commander');
+const fs = require('fs');
+const path = require('path');
+const low = require('lowdb');
+const FileSync = require('lowdb/adapters/FileSync');
+
+const { Tezos } = require('../packages/taquito/dist/lib/taquito');
+const { prefix, b58cdecode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
+
+const CLIENT_DB_PATH = path.join(__dirname, 'client-db');
+
+const rpcUrl = {
+  babylonnet: 'https://rpcalpha.tzbeta.net/',
+  mainnet: 'https://mainnet.tezrpc.me'
+};
+
+function ensureDirSync(dirpath) {
+  try {
+    fs.mkdirSync(dirpath, { recursive: true });
+  } catch (err) {
+    if (err.code !== 'EEXIST') throw err;
+  }
+}
+
+ensureDirSync(CLIENT_DB_PATH);
+const adapter = new FileSync(path.join(CLIENT_DB_PATH, 'db.json'));
+const db = low(adapter);
+db.defaults({ addresses: [] }).write();
+
+function logOp(op) {
+  console.log(`broadcasted, hash: ${op.hash}`);
+}
+
+program
+  .command('address')
+  .alias('a')
+  .action(async () => {
+    const { share, address } = await generateNewAccount();
+    console.log(address);
+    db.get('addresses').push({ address, share }).write();
+  });
+
+program
+  .command('balance <address>')
+  .alias('b')
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (address, options) => {
+    const mutezBalance = await getBalance(address, options.network || 'babylonnet');
+    const xtzBalance = Tezos.format('mutez', 'tz', mutezBalance);
+    console.log(`${xtzBalance} XTZ`);
+  });
+
+
+program
+  .command('transfer <from> <to> <xtz_amount>')
+  .alias('t')
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (from, to, xtz_amount, options) => {
+    const { share } = db.get('addresses').find({address: from}).value();
+    const op = await transfer(share, to, xtz_amount, options.network || 'babylonnet');
+    logOp(op);
+    const id = await op.confirmation();
+    console.log(`confirmed, block: ${id}`);
+  });
+
+program
+  .command('transfer-all <from> <to>')
+  .alias('ta')
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (from, to, options) => {
+    const network = options.network || 'babylonnet';
+    const { share } = db.get('addresses').find({address: from}).value();
+    const op = await transferAll(share, to, network);
+    logOp(op);
+    const id = await op.confirmation();
+    console.log(`confirmed, block: ${id}`);
+  });
+
+program
+  .command('delegate <from> <to>')
+  .description('Delegate funds to a baker account')
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .option('-t, --trackingId [id]', '3 digits number to signal delegator through gas limit suffix')
+  .action(async (from, to, options) => {
+    const { share } = db.get('addresses').find({address: from}).value();
+    const op = await delegate(share, to, options.network || 'babylonnet', options.trackingId);
+    logOp(op);
+    const id = await op.confirmation();
+    console.log(`confirmed, block: ${id}`);
+  });
+
+program
+  .command('subscribe <address>')
+  .description('Subscribe to get notifications regarding operations involving given address')
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (address, options) => {
+    const rpc = rpcUrl[options.network || 'babylonnet'];
+    console.log('rpc =', rpc);
+    Tezos.setProvider({
+      stream: rpc,
+      rpc
+    });
+    try {
+      const subscription = Tezos.stream.subscribeOperation([{or: [{source: address}, {destination: address}]}]);
+      subscription.on('data', data => console.log('on("data") = ', data));
+      subscription.on('error', error => console.error('on("error") = ', error));
+    } catch (err) {
+      console.error('err =', err);
+    }
+  });
+
+program
+  .command('validate <address>')
+  .alias('v')
+  .description('Validate given string is a valid Tezos address')
+  .action(async (address) => {
+    try {
+      function logValid(isValid) {
+        console.log(`${address} is ${isValid ? 'a valid' : 'an invalid'} Tezos address.`);
+      }
+
+      let pref = address.substring(0, 3);
+      if (!['tz1', 'tz2', 'tz3'].includes(pref)) {
+        pref = address.substring(0, 2);
+        if (pref !== 'KT') {
+          return logValid(false);
+        }
+      }
+
+      b58cdecode(address, prefix[pref]);
+      logValid(true);
+    } catch (err) {
+      logValid(false);
+    }
+  });
+
+program
+  .command('is-active <address>')
+  .alias('ia')
+  .description('is given Tezos address active')
+  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .action(async (address, options) => {
+    const network = options.network || 'babylonnet';
+    Tezos.setProvider({
+      rpc: rpcUrl[network]
+    });
+    try {
+      console.log(await isAddressActive(address, network));
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+async function isAddressActive(address, network) {
+  try {
+    Tezos.setProvider({
+      rpc: rpcUrl[network]
+    });
+    let balanceInMutez = await Tezos.tz.getBalance(address);
+    return balanceInMutez.gt(0);
+  } catch (e) {
+    return false;
+  }
+}
+
+program.parse(process.argv);

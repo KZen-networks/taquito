@@ -232,8 +232,12 @@ export abstract class OperationEmitter {
 
   protected async signAndInject(forgedBytes: ForgedBytes) {
     const signed = await this.signer.sign(forgedBytes.opbytes, new Uint8Array([3]));
-    forgedBytes.opbytes = signed.sbytes;
-    forgedBytes.opOb.signature = signed.prefixSig;
+    return this.inject(forgedBytes, signed.prefixSig, signed.sbytes);
+  }
+
+  protected async inject(forgedBytes: ForgedBytes, prefixSig: string, sbytes: string) {
+    forgedBytes.opbytes = sbytes;
+    forgedBytes.opOb.signature = prefixSig;
 
     const opResponse: OperationContentsAndResult[] = [];
     let errors: any[] = [];

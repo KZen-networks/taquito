@@ -7,6 +7,8 @@ import {
   OriginateParams,
   TransferParams,
   RegisterDelegateParams,
+  ForgedBytes,
+  RPCTransferOperation,
 } from '../operations/types';
 import { Contract } from './contract';
 import { Estimate } from './estimate';
@@ -104,6 +106,32 @@ export interface ContractProvider {
 
   /**
    *
+   * @description Get relevant parameters for later signing and broadcast of a delegate transaction
+   *
+   * @returns ForgedBytes parameters needed to sign and broadcast
+   *
+   * @param params transfer parameters
+   */
+  getDelegateSignatureHash(params: DelegateParams): Promise<ForgedBytes>;
+
+  /**
+   *
+   * @description inject a signature to construct a delegate operation
+   *
+   * @returns A delegate operation handle with the result from the rpc node
+   *
+   * @param params result of `getTransferSignatureHash`
+   * @param prefixSig the prefix to be used for the encoding of the signature bytes
+   * @param sbytes signature bytes in hex
+   */
+  injectDelegateSignatureAndBroadcast(
+    params: ForgedBytes,
+    prefixSig: string,
+    sbytes: string
+  ): Promise<DelegateOperation>;
+
+  /**
+   *
    * @description Set the delegate for a contract. Will sign and inject an operation using the current context
    *
    * @returns An operation handle with the result from the rpc node
@@ -121,6 +149,7 @@ export interface ContractProvider {
    * @param RegisterDelegate operation parameter
    */
   registerDelegate(params: DelegateParams): Promise<DelegateOperation>;
+
   /**
    *
    * @description Transfer tz from current address to a specific address. Will sign and inject an operation using the current context
@@ -130,5 +159,32 @@ export interface ContractProvider {
    * @param Transfer operation parameter
    */
   transfer(params: TransferParams): Promise<TransactionOperation>;
+
+  /**
+   *
+   * @description Get relevant parameters for later signing and broadcast of a transfer transaction
+   *
+   * @returns ForgedBytes parameters needed to sign and broadcast
+   *
+   * @param params transfer parameters
+   */
+  getTransferSignatureHash(params: TransferParams): Promise<ForgedBytes>;
+
+  /**
+   *
+   * @description inject a signature to construct a transfer operation
+   *
+   * @returns A transfer operation handle with the result from the rpc node
+   *
+   * @param params result of `getTransferSignatureHash`
+   * @param prefixSig the prefix to be used for the encoding of the signature bytes
+   * @param sbytes signature bytes in hex
+   */
+  injectTransferSignatureAndBroadcast(
+    params: ForgedBytes,
+    prefixSig: string,
+    sbytes: string
+  ): Promise<TransactionOperation>;
+
   at(address: string, schema?: ContractSchema): Promise<Contract>;
 }
