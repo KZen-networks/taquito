@@ -55,3 +55,6 @@ Commands:
   subscribe [options] <address>                  Subscribe to get notifications regarding operations involving given address
   validate|v <address>                           Validate given string is a valid Tezos address
 ```
+
+|![Transfer demo](https://raw.githubusercontent.com/KZen-networks/taquito/master/demo/tezos-tss-demo.gif "Tezos Threshold Wallet Demo")|
+|:--:|
