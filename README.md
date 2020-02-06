@@ -17,7 +17,9 @@ of secrets is _splitted_ between two parties, and the single key is never presen
 ```
 $ git clone https://github.com/KZen-networks/taquito.git
 $ cd taquito
+$ npm install -g lerna
 $ npm install
+$ lerna bootstrap
 $ npm run build
 ```
 
