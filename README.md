@@ -49,13 +49,15 @@ Options:
   -h, --help                                     output usage information
 
 Commands:
-  address|a
-  balance|b [options] <address>
-  transfer|t [options] <from> <to> <xtz_amount>
-  transfer-all|ta [options] <from> <to>
-  delegate [options] <from> <to>                 Delegate funds to a baker account
-  subscribe [options] <address>                  Subscribe to get notifications regarding operations involving given address
+  generate-address|a                             Generate a new Tezos address
+  list-address|la                                List all previously generated addresses
+  balance|b [options] <address>                  Get the balance of a given address
+  transfer|t [options] <from> <to> <xtz_amount>  Transfer XTZ
+  transfer-all|ta [options] <from> <to>          Transfer all XTZ funds from a given account
+  delegate|d [options] <from> <to>               Delegate funds to a baker account
+  subscribe|s [options] <address>                Subscribe to get notifications regarding operations involving given address
   validate|v <address>                           Validate given string is a valid Tezos address
+  is-active|ia [options] <address>               is given Tezos address active
 ```
 
 |![Transfer demo](https://raw.githubusercontent.com/KZen-networks/taquito/master/demo/tezos-tss-demo.gif "Tezos Threshold Wallet Demo")|

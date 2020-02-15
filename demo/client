@@ -36,8 +36,9 @@ function logOp(op) {
 }
 
 program
-  .command('address')
+  .command('generate-address')
   .alias('a')
+  .description('Generate a new Tezos address')
   .action(async () => {
     const { share, address } = await generateNewAccount();
     console.log(address);
@@ -45,8 +46,17 @@ program
   });
 
 program
+  .command('list-address')
+  .alias('la')
+  .description('List all previously generated addresses')
+  .action(async () => {
+    console.log(db.get('addresses').map((a) => a.address).value());
+  });
+
+program
   .command('balance <address>')
   .alias('b')
+  .description('Get the balance of a given address')
   .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
   .action(async (address, options) => {
     const mutezBalance = await getBalance(address, options.network || 'babylonnet');
@@ -58,6 +68,7 @@ program
 program
   .command('transfer <from> <to> <xtz_amount>')
   .alias('t')
+  .description('Transfer XTZ')
   .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
   .action(async (from, to, xtz_amount, options) => {
     const { share } = db.get('addresses').find({address: from}).value();
@@ -70,6 +81,7 @@ program
 program
   .command('transfer-all <from> <to>')
   .alias('ta')
+  .description('Transfer all XTZ funds from a given account')
   .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
   .action(async (from, to, options) => {
     const network = options.network || 'babylonnet';
@@ -82,6 +94,7 @@ program
 
 program
   .command('delegate <from> <to>')
+  .alias('d')
   .description('Delegate funds to a baker account')
   .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
   .option('-t, --trackingId [id]', '3 digits number to signal delegator through gas limit suffix')
@@ -95,6 +108,7 @@ program
 
 program
   .command('subscribe <address>')
+  .alias('s')
   .description('Subscribe to get notifications regarding operations involving given address')
   .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
   .action(async (address, options) => {
