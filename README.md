@@ -11,8 +11,8 @@ of secrets is _splitted_ between two parties, and the single key is never presen
 
 1. If on Linux, install needed packages:
 ```sh
-$ apt-get update
-$ apt-get install libgmp3-dev, pkg-config, libssl-dev, clang, libclang-dev
+$ sudo apt-get update
+$ sudo apt-get install libgmp3-dev pkg-config libssl-dev clang libclang-dev
 ```
 2. Install [Node.js](https://nodejs.org/en/download/)<br>
 (tested on Node 10)
