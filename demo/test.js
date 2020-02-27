@@ -272,5 +272,35 @@ describe('Tezos API tests', () => {
 
     await op.confirmation();
   }).timeout(200000);
+
+  it.only('receive, send, and stake', async () => {
+    // 1. send to an unrevealed account
+    const newImplicitAccount = await generateNewAccount();
+
+    let op = await transfer(revealedAccount1.privateKey, newImplicitAccount.address, 0.351864, network);
+
+    await op.confirmation();
+
+    const balanceAfter = await getBalance(newImplicitAccount.address, network);
+    assert.strictEqual(balanceAfter.toString(), (0.351864 * MUTEZ_IN_TZ).toString());
+
+    // 2. send from the new account
+    op = await transfer(newImplicitAccount.privateKey, revealedAccount1.address, 0.003514, network);
+    assert.strictEqual(op.results.length, 2);  // with reveal
+    assert.strictEqual(op.results[0].kind, 'reveal');
+    assert.strictEqual(op.results[0].storage_limit, '0');
+    assert.strictEqual(op.results[1].kind, 'transaction');
+    assert.strictEqual(op.results[1].storage_limit, '0');
+
+    await op.confirmation();
+
+    // 3. delegate from the new account
+    op = await delegate(newImplicitAccount.privateKey, delegateAddress, network);
+    assert.strictEqual(op.results.length, 1);  // no reveal
+    assert.strictEqual(op.results[0].kind, 'delegation');
+    assert.strictEqual(op.results[0].storage_limit, '0');
+
+    await op.confirmation();
+  }).timeout(200000);
 });
 
