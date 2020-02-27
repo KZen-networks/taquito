@@ -15,10 +15,7 @@ describe('Origination operation', () => {
       counter: '1121110',
       gas_limit: '90000',
       storage_limit: '2000',
-      manager_pubkey: 'tz1bwsEWCwSEXdRvnJxvegQZKeX5dj6oKEys',
       balance: '1000000',
-      spendable: false,
-      delegatable: false,
       script: {},
       metadata: {
         balance_updates: [
@@ -79,7 +76,7 @@ describe('Origination operation', () => {
     fakeContext.rpc.getBlock.mockResolvedValue({
       operations: [[{ hash: 'test_hash' }], [], [], []],
       header: {
-        level: 0,
+        level: 200,
       },
     });
   });
@@ -136,7 +133,7 @@ describe('Origination operation', () => {
         fakeContractProvider
       );
       const confirmation = await op.confirmation();
-      expect(confirmation).toEqual(0);
+      expect(confirmation).toEqual(200);
       done();
     });
 

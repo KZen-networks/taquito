@@ -1,6 +1,6 @@
 {
   "name": "@taquito/signer",
-  "version": "5.3.1-beta.0",
+  "version": "6.0.3-beta.1",
   "description": "Provide signing functionality to be with taquito",
   "keywords": [
     "tezos",
@@ -11,7 +11,8 @@
   "module": "dist/index.es5.js",
   "typings": "dist/types/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "signature.json"
   ],
   "publishConfig": {
     "access": "public"
@@ -65,7 +66,7 @@
     ]
   },
   "dependencies": {
-    "@taquito/utils": "^5.3.1-beta.0",
+    "@taquito/utils": "^6.0.3-beta.1",
     "bignumber.js": "^9.0.0",
     "bip39": "^3.0.2",
     "elliptic": "^6.5.1",

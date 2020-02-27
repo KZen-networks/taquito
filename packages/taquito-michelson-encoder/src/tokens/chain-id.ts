@@ -1,6 +1,14 @@
-import { Token, TokenFactory, ComparableToken } from './token';
+import { Token, TokenFactory, ComparableToken, TokenValidationError } from './token';
+import { validateChain, ValidationResult } from '@taquito/utils';
 
-export class ChainIDToken extends Token implements ComparableToken {
+export class ChainIDValidationError extends TokenValidationError {
+  name: string = 'ChainIDValidationError';
+  constructor(public value: any, public token: ChainIDToken, message: string) {
+    super(value, token, message);
+  }
+}
+
+export class ChainIDToken extends ComparableToken {
   static prim = 'chain_id';
 
   constructor(
@@ -9,6 +17,14 @@ export class ChainIDToken extends Token implements ComparableToken {
     protected fac: TokenFactory
   ) {
     super(val, idx, fac);
+  }
+
+  private isValid(value: any): ChainIDValidationError | null {
+    if (validateChain(value) !== ValidationResult.VALID) {
+      return new ChainIDValidationError(value, this, 'ChainID is not valid');
+    }
+
+    return null;
   }
 
   public Execute(val: any): string {
@@ -21,10 +37,21 @@ export class ChainIDToken extends Token implements ComparableToken {
 
   public Encode(args: any[]): any {
     const val = args.pop();
+
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
+
     return { string: val };
   }
 
   public EncodeObject(val: any): any {
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
+
     return { string: val };
   }
 

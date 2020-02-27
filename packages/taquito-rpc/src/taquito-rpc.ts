@@ -23,7 +23,6 @@ import {
   EntrypointsResponse,
   ForgeOperationsParams,
   ManagerKeyResponse,
-  ManagerResponse,
   OperationHash,
   PackDataParams,
   PackDataResponse,
@@ -40,9 +39,10 @@ import {
 import { castToBigNumber } from './utils/utils';
 
 export * from './types';
-export * from './types.common';
 
-const defaultRPC = 'https://tezrpc.me';
+export { OpKind } from './opkind';
+
+const defaultRPC = 'https://mainnet.tezrpc.me';
 const defaultChain = 'main';
 
 interface RPCOptions {
@@ -57,12 +57,12 @@ const defaultRPCOptions: RPCOptions = { block: 'head' };
 export class RpcClient {
   /**
    *
-   * @param url rpc root url (default https://tezrpc.me)
+   * @param url rpc root url (default https://mainnet.tezrpc.me)
    * @param chain chain (default main)
    * @param httpBackend Http backend that issue http request.
    * You can override it by providing your own if you which to hook in the request/response
    *
-   * @example new RpcClient('https://tezrpc.me', 'main') this will use https://tezrpc.me/chains/main
+   * @example new RpcClient('https://mainnet.tezrpc.me', 'main') this will use https://mainnet.tezrpc.me/chains/main
    */
   constructor(
     private url: string = defaultRPC,
@@ -176,29 +176,6 @@ export class RpcClient {
       ...contractResponse,
       balance: new BigNumber(contractResponse.balance),
     };
-  }
-
-  /**
-   *
-   * @param address contract address from which we want to retrieve the manager
-   * @param options contains generic configuration for rpc calls
-   *
-   * @deprecated Remove in 005
-   *
-   * @description Access the manager of a contract.
-   *
-   * @see http://tezos.gitlab.io/master/api/rpc.html#get-block-id-context-contracts-contract-id-manager
-   */
-  async getManager(
-    address: string,
-    { block }: { block: string } = defaultRPCOptions
-  ): Promise<ManagerResponse> {
-    return this.httpBackend.createRequest<ManagerResponse>({
-      url: this.createURL(
-        `/chains/${this.chain}/blocks/${block}/context/contracts/${address}/manager`
-      ),
-      method: 'GET',
-    });
   }
 
   /**

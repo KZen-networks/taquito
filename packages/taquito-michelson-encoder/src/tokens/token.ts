@@ -1,20 +1,20 @@
 import { MichelsonV1Expression } from '@taquito/rpc';
 
+export abstract class TokenValidationError implements Error {
+  name: string = 'ValidationError';
+  public message: string;
+
+  constructor(public value: any, public token: Token, baseMessage: string) {
+    const annot = this.token.annot();
+    const annotText = annot ? `[${annot}] ` : '';
+    this.message = `${annotText}${baseMessage}`;
+  }
+}
+
 export type TokenFactory = (val: any, idx: number) => Token;
 
 export interface Semantic {
   [key: string]: (value: MichelsonV1Expression, schema: MichelsonV1Expression) => any;
-}
-
-export interface ComparableToken extends Token {
-  ToBigMapKey(
-    val: string
-  ): {
-    key: { [key: string]: string };
-    type: { prim: string };
-  };
-
-  ToKey(val: string): string;
 }
 
 export abstract class Token {
@@ -24,11 +24,32 @@ export abstract class Token {
     protected fac: TokenFactory
   ) {}
 
+  protected typeWithoutAnnotations() {
+    const removeArgsRec = (val: {
+      prim: string;
+      args: any[];
+      annots?: any[];
+    }): { prim: string; args?: any[] } => {
+      if (val.args) {
+        return {
+          prim: val.prim,
+          args: val.args.map(x => removeArgsRec(x)),
+        };
+      } else {
+        return {
+          prim: val.prim,
+        };
+      }
+    };
+
+    return removeArgsRec(this.val);
+  }
+
   annot() {
-    return (Array.isArray(this.val.annots) ? this.val.annots[0] : String(this.idx)).replace(
-      /(%|\:)(_Liq_entry_)?/,
-      ''
-    );
+    return (Array.isArray(this.val.annots) && this.val.annots.length > 0
+      ? this.val.annots[0]
+      : String(this.idx)
+    ).replace(/(%|\:)(_Liq_entry_)?/, '');
   }
 
   hasAnnotations() {
@@ -47,5 +68,20 @@ export abstract class Token {
 
   public ExtractSignature() {
     return [[this.ExtractSchema()]];
+  }
+}
+
+export abstract class ComparableToken extends Token {
+  abstract ToBigMapKey(
+    val: string
+  ): {
+    key: { [key: string]: string };
+    type: { prim: string };
+  };
+
+  abstract ToKey(val: string): string;
+
+  compare(o1: string, o2: string) {
+    return o1 < o2 ? -1 : 1;
   }
 }

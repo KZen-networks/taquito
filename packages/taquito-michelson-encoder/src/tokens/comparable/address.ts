@@ -1,7 +1,14 @@
-import { Token, TokenFactory, ComparableToken } from '../token';
-import { b58decode, encodePubKey } from '@taquito/utils';
+import { Token, TokenFactory, ComparableToken, TokenValidationError } from '../token';
+import { b58decode, encodePubKey, validateAddress, ValidationResult } from '@taquito/utils';
 
-export class AddressToken extends Token implements ComparableToken {
+export class AddressValidationError extends TokenValidationError {
+  name: string = 'AddressValidationError';
+  constructor(public value: any, public token: AddressToken, message: string) {
+    super(value, token, message);
+  }
+}
+
+export class AddressToken extends ComparableToken {
   static prim = 'address';
 
   constructor(
@@ -20,12 +27,31 @@ export class AddressToken extends Token implements ComparableToken {
     };
   }
 
+  private isValid(value: any): AddressValidationError | null {
+    if (validateAddress(value) !== ValidationResult.VALID) {
+      return new AddressValidationError(value, this, `Address is not valid: ${value}`);
+    }
+
+    return null;
+  }
+
   public Encode(args: any[]): any {
     const val = args.pop();
+
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
+
     return { string: val };
   }
 
   public EncodeObject(val: any): any {
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
+
     return { string: val };
   }
 
@@ -49,5 +75,21 @@ export class AddressToken extends Token implements ComparableToken {
     }
 
     return encodePubKey(bytes);
+  }
+
+  compare(address1: string, address2: string) {
+    const isImplicit = (address: string) => {
+      return address.startsWith('tz');
+    };
+
+    if (isImplicit(address1) && isImplicit(address2)) {
+      return super.compare(address1, address2);
+    } else if (isImplicit(address1)) {
+      return -1;
+    } else if (isImplicit(address2)) {
+      return 1;
+    } else {
+      return super.compare(address1, address2);
+    }
   }
 }
