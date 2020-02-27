@@ -1,12 +1,12 @@
 import { Schema } from '@taquito/michelson-encoder';
 import { Context } from '../context';
+import { DelegateOperation } from '../operations/delegate-operation';
 import { OperationEmitter } from '../operations/operation-emitter';
 import { OriginationOperation } from '../operations/origination-operation';
-import { DelegateParams, OriginateParams, TransferParams, RegisterDelegateParams, ForgedBytes } from '../operations/types';
+import { TransactionOperation } from '../operations/transaction-operation';
+import { DelegateParams, OriginateParams, RegisterDelegateParams, ForgedBytes, TransferParams } from '../operations/types';
 import { Contract } from './contract';
 import { ContractProvider, ContractSchema, EstimationProvider } from './interface';
-import { TransactionOperation } from '../operations/transaction-operation';
-import { DelegateOperation } from '../operations/delegate-operation';
 export declare class RpcContractProvider extends OperationEmitter implements ContractProvider {
     private estimator;
     constructor(context: Context, estimator: EstimationProvider);
@@ -44,7 +44,6 @@ export declare class RpcContractProvider extends OperationEmitter implements Con
      * @see http://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-context-big-maps-big-map-id-script-expr
      */
     getBigMapKeyByID<T>(id: string, keyToEncode: string, schema: Schema): Promise<T>;
-    private estimate;
     /**
      *
      * @description Originate a new contract according to the script in parameters. Will sign and inject an operation using the current context

@@ -2,7 +2,7 @@ import { Schema } from '@taquito/michelson-encoder';
 import { DelegateOperation } from '../operations/delegate-operation';
 import { OriginationOperation } from '../operations/origination-operation';
 import { TransactionOperation } from '../operations/transaction-operation';
-import { DelegateParams, OriginateParams, TransferParams, RegisterDelegateParams, ForgedBytes } from '../operations/types';
+import { DelegateParams, OriginateParams, TransferParams, RegisterDelegateParams, ForgedBytes, ParamsWithKind } from '../operations/types';
 import { Contract } from './contract';
 import { Estimate } from './estimate';
 export declare type ContractSchema = Schema | unknown;
@@ -43,6 +43,7 @@ export interface EstimationProvider {
      * @param Estimate
      */
     registerDelegate(params?: RegisterDelegateParams): Promise<Estimate>;
+    batch(params: ParamsWithKind[]): Promise<Estimate[]>;
 }
 export interface ContractProvider {
     /**

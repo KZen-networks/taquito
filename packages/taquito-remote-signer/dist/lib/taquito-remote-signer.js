@@ -107,6 +107,9 @@ var RemoteSigner = /** @class */ (function () {
                     case 1:
                         signature = (_a.sent()).signature;
                         pref = signature.startsWith('sig') ? signature.substr(0, 3) : signature.substr(0, 5);
+                        if (!utils_1.isValidPrefix(pref)) {
+                            throw new Error('Unsupported signature given by remote signer: ' + signature);
+                        }
                         decoded = utils_1.b58cdecode(signature, utils_1.prefix[pref]);
                         return [2 /*return*/, {
                                 bytes: bytes,

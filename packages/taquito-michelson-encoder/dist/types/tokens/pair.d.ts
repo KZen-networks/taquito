@@ -15,6 +15,13 @@ export declare class PairToken extends Token {
     }, idx: number, fac: TokenFactory);
     Encode(args: any[]): any;
     ExtractSignature(): any;
+    ToBigMapKey(val: any): {
+        key: any;
+        type: {
+            prim: string;
+            args?: any[] | undefined;
+        };
+    };
     EncodeObject(args: any): any;
     private traversal;
     Execute(val: any, semantics?: Semantic): {

@@ -15,6 +15,7 @@ var bigmap_1 = require("../tokens/bigmap");
 var createToken_1 = require("../tokens/createToken");
 var or_1 = require("../tokens/or");
 var pair_1 = require("../tokens/pair");
+var token_1 = require("../tokens/token");
 /**
  * @warn Our current smart contract abstraction feature is currently in preview. It's API is not final, and it may not cover every use case (yet). We will greatly appreciate any feedback on this feature.
  */
@@ -92,6 +93,9 @@ var Schema = /** @class */ (function () {
             return this.root.EncodeObject(_value);
         }
         catch (ex) {
+            if (ex instanceof token_1.TokenValidationError) {
+                throw ex;
+            }
             throw new Error("Unable to encode storage object. " + ex);
         }
     };

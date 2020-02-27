@@ -28,7 +28,7 @@ var BoolToken = /** @class */ (function (_super) {
     };
     BoolToken.prototype.Encode = function (args) {
         var val = args.pop();
-        return val ? 'true' : 'false';
+        return { prim: val ? 'True' : 'False' };
     };
     BoolToken.prototype.EncodeObject = function (val) {
         return { prim: val ? 'True' : 'False' };

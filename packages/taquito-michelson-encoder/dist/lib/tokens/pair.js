@@ -71,6 +71,12 @@ var PairToken = /** @class */ (function (_super) {
         }
         return newSig;
     };
+    PairToken.prototype.ToBigMapKey = function (val) {
+        return {
+            key: this.EncodeObject(val),
+            type: this.typeWithoutAnnotations(),
+        };
+    };
     PairToken.prototype.EncodeObject = function (args) {
         var leftToken = this.createToken(this.val.args[0], this.idx);
         var keyCount = 1;
