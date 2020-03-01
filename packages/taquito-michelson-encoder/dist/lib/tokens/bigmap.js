@@ -25,6 +25,18 @@ var __assign = (this && this.__assign) || function () {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var token_1 = require("./token");
+var BigMapValidationError = /** @class */ (function (_super) {
+    __extends(BigMapValidationError, _super);
+    function BigMapValidationError(value, token, message) {
+        var _this = _super.call(this, value, token, message) || this;
+        _this.value = value;
+        _this.token = token;
+        _this.name = 'BigMapValidationError';
+        return _this;
+    }
+    return BigMapValidationError;
+}(token_1.TokenValidationError));
+exports.BigMapValidationError = BigMapValidationError;
 var BigMapToken = /** @class */ (function (_super) {
     __extends(BigMapToken, _super);
     function BigMapToken(val, idx, fac) {
@@ -54,10 +66,22 @@ var BigMapToken = /** @class */ (function (_super) {
             _a[this.KeySchema.ExtractSchema()] = this.ValueSchema.ExtractSchema(),
             _a;
     };
+    BigMapToken.prototype.isValid = function (value) {
+        if (typeof value === 'object') {
+            return null;
+        }
+        return new BigMapValidationError(value, this, 'Value must be an object');
+    };
     BigMapToken.prototype.Encode = function (args) {
         var _this = this;
         var val = args.pop();
-        return Object.keys(val).map(function (key) {
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
+        return Object.keys(val)
+            .sort(this.KeySchema.compare)
+            .map(function (key) {
             return {
                 prim: 'Elt',
                 args: [_this.KeySchema.Encode([key]), _this.ValueSchema.EncodeObject(val[key])],
@@ -67,7 +91,13 @@ var BigMapToken = /** @class */ (function (_super) {
     BigMapToken.prototype.EncodeObject = function (args) {
         var _this = this;
         var val = args;
-        return Object.keys(val).map(function (key) {
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
+        return Object.keys(val)
+            .sort(this.KeySchema.compare)
+            .map(function (key) {
             return {
                 prim: 'Elt',
                 args: [_this.KeySchema.EncodeObject(key), _this.ValueSchema.EncodeObject(val[key])],

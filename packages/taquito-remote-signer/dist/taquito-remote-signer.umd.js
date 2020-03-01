@@ -151,6 +151,9 @@
                         case 1:
                             signature = (_a.sent()).signature;
                             pref = signature.startsWith('sig') ? signature.substr(0, 3) : signature.substr(0, 5);
+                            if (!utils.isValidPrefix(pref)) {
+                                throw new Error('Unsupported signature given by remote signer: ' + signature);
+                            }
                             decoded = utils.b58cdecode(signature, utils.prefix[pref]);
                             return [2 /*return*/, {
                                     bytes: bytes,

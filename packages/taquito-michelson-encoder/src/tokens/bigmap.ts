@@ -1,4 +1,11 @@
-import { Token, TokenFactory, ComparableToken, Semantic } from './token';
+import { Token, TokenFactory, ComparableToken, Semantic, TokenValidationError } from './token';
+
+export class BigMapValidationError extends TokenValidationError {
+  name: string = 'BigMapValidationError';
+  constructor(public value: any, public token: BigMapToken, message: string) {
+    super(value, token, message);
+  }
+}
 
 export class BigMapToken extends Token {
   static prim = 'big_map';
@@ -24,25 +31,48 @@ export class BigMapToken extends Token {
     };
   }
 
+  private isValid(value: any): BigMapValidationError | null {
+    if (typeof value === 'object') {
+      return null;
+    }
+
+    return new BigMapValidationError(value, this, 'Value must be an object');
+  }
+
   public Encode(args: any[]): any {
     const val = args.pop();
 
-    return Object.keys(val).map(key => {
-      return {
-        prim: 'Elt',
-        args: [this.KeySchema.Encode([key]), this.ValueSchema.EncodeObject(val[key])],
-      };
-    });
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
+
+    return Object.keys(val)
+      .sort(this.KeySchema.compare)
+      .map(key => {
+        return {
+          prim: 'Elt',
+          args: [this.KeySchema.Encode([key]), this.ValueSchema.EncodeObject(val[key])],
+        };
+      });
   }
 
   public EncodeObject(args: any): any {
     const val = args;
-    return Object.keys(val).map(key => {
-      return {
-        prim: 'Elt',
-        args: [this.KeySchema.EncodeObject(key), this.ValueSchema.EncodeObject(val[key])],
-      };
-    });
+
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
+
+    return Object.keys(val)
+      .sort(this.KeySchema.compare)
+      .map(key => {
+        return {
+          prim: 'Elt',
+          args: [this.KeySchema.EncodeObject(key), this.ValueSchema.EncodeObject(val[key])],
+        };
+      });
   }
 
   public Execute(val: any[] | { int: string }, semantic?: Semantic) {

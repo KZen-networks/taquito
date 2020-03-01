@@ -5,4 +5,6 @@ function __export(m) {
 Object.defineProperty(exports, "__esModule", { value: true });
 __export(require("./schema/storage"));
 __export(require("./schema/parameter"));
+__export(require("./errors"));
+exports.UnitValue = Symbol();
 //# sourceMappingURL=taquito-michelson-encoder.js.map

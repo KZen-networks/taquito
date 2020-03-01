@@ -1,8 +1,8 @@
 import { HttpBackend } from '@taquito/http-utils';
 import BigNumber from 'bignumber.js';
-import { BakingRightsQueryArguments, BakingRightsResponse, BalanceResponse, BallotListResponse, BallotsResponse, BigMapGetResponse, BigMapKey, BigMapResponse, BlockHeaderResponse, BlockMetadata, BlockResponse, ConstantsResponse, ContractResponse, CurrentProposalResponse, CurrentQuorumResponse, DelegateResponse, DelegatesResponse, EndorsingRightsQueryArguments, EndorsingRightsResponse, EntrypointsResponse, ForgeOperationsParams, ManagerKeyResponse, ManagerResponse, OperationHash, PackDataParams, PeriodKindResponse, PreapplyParams, PreapplyResponse, ProposalsResponse, RPCRunOperationParam, ScriptResponse, StorageResponse, VotesListingsResponse } from './types';
+import { BakingRightsQueryArguments, BakingRightsResponse, BalanceResponse, BallotListResponse, BallotsResponse, BigMapGetResponse, BigMapKey, BigMapResponse, BlockHeaderResponse, BlockMetadata, BlockResponse, ConstantsResponse, ContractResponse, CurrentProposalResponse, CurrentQuorumResponse, DelegateResponse, DelegatesResponse, EndorsingRightsQueryArguments, EndorsingRightsResponse, EntrypointsResponse, ForgeOperationsParams, ManagerKeyResponse, OperationHash, PackDataParams, PeriodKindResponse, PreapplyParams, PreapplyResponse, ProposalsResponse, RPCRunOperationParam, ScriptResponse, StorageResponse, VotesListingsResponse } from './types';
 export * from './types';
-export * from './types.common';
+export { OpKind } from './opkind';
 interface RPCOptions {
     block: string;
 }
@@ -15,12 +15,12 @@ export declare class RpcClient {
     private httpBackend;
     /**
      *
-     * @param url rpc root url (default https://tezrpc.me)
+     * @param url rpc root url (default https://mainnet.tezrpc.me)
      * @param chain chain (default main)
      * @param httpBackend Http backend that issue http request.
      * You can override it by providing your own if you which to hook in the request/response
      *
-     * @example new RpcClient('https://tezrpc.me', 'main') this will use https://tezrpc.me/chains/main
+     * @example new RpcClient('https://mainnet.tezrpc.me', 'main') this will use https://mainnet.tezrpc.me/chains/main
      */
     constructor(url?: string, chain?: string, httpBackend?: HttpBackend);
     private createURL;
@@ -79,20 +79,6 @@ export declare class RpcClient {
     getContract(address: string, { block }?: {
         block: string;
     }): Promise<ContractResponse>;
-    /**
-     *
-     * @param address contract address from which we want to retrieve the manager
-     * @param options contains generic configuration for rpc calls
-     *
-     * @deprecated Remove in 005
-     *
-     * @description Access the manager of a contract.
-     *
-     * @see http://tezos.gitlab.io/master/api/rpc.html#get-block-id-context-contracts-contract-id-manager
-     */
-    getManager(address: string, { block }?: {
-        block: string;
-    }): Promise<ManagerResponse>;
     /**
      *
      * @param address contract address from which we want to retrieve the manager

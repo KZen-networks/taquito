@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { InMemorySigner } = require('../packages/taquito-signer/dist/lib');
+const { LocalForger } = require('../packages/taquito-local-forging/dist/lib/taquito-local-forging');
 const { Tezos, DEFAULT_GAS_LIMIT } = require('../packages/taquito/dist/lib/taquito');
 const { prefix, b58cencode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
 const BigNumber = require('bignumber.js');
@@ -33,6 +34,7 @@ async function generateNewAccount() {
 async function transfer(fromPrivateKey, to, xtzAmount, network) {
   Tezos.setProvider({
     signer: new InMemorySigner(fromPrivateKey),
+    forger: new LocalForger(),
     rpc: rpcUrl[network]
   });
   const from = await Tezos.signer.publicKeyHash();
@@ -64,6 +66,7 @@ async function transfer(fromPrivateKey, to, xtzAmount, network) {
 async function transferAll(fromPrivateKey, to, network) {
   Tezos.setProvider({
     signer: new InMemorySigner(fromPrivateKey),
+    forger: new LocalForger(),
     rpc: rpcUrl[network]
   });
   const from = await Tezos.signer.publicKeyHash();
@@ -104,6 +107,7 @@ async function transferAll(fromPrivateKey, to, network) {
 async function delegate(fromPrivateKey, to, network, trackingId) {
   Tezos.setProvider({
     signer: new InMemorySigner(fromPrivateKey),
+    forger: new LocalForger(),
     rpc: rpcUrl[network]
   });
   try {

@@ -273,7 +273,7 @@ describe('Tezos API tests', () => {
     await op.confirmation();
   }).timeout(200000);
 
-  it.only('receive, send, and stake', async () => {
+  it('receive, send, and stake', async () => {
     // 1. send to an unrevealed account
     const newImplicitAccount = await generateNewAccount();
 

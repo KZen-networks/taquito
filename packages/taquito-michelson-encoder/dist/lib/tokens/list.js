@@ -21,6 +21,18 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var token_1 = require("./token");
+var ListValidationError = /** @class */ (function (_super) {
+    __extends(ListValidationError, _super);
+    function ListValidationError(value, token, message) {
+        var _this = _super.call(this, value, token, message) || this;
+        _this.value = value;
+        _this.token = token;
+        _this.name = 'ListValidationError';
+        return _this;
+    }
+    return ListValidationError;
+}(token_1.TokenValidationError));
+exports.ListValidationError = ListValidationError;
 var ListToken = /** @class */ (function (_super) {
     __extends(ListToken, _super);
     function ListToken(val, idx, fac) {
@@ -30,8 +42,18 @@ var ListToken = /** @class */ (function (_super) {
         _this.fac = fac;
         return _this;
     }
+    ListToken.prototype.isValid = function (value) {
+        if (Array.isArray(value)) {
+            return null;
+        }
+        return new ListValidationError(value, this, 'Value must be an array');
+    };
     ListToken.prototype.Encode = function (args) {
         var val = args.pop();
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         var schema = this.createToken(this.val.args[0], 0);
         return val.reduce(function (prev, current) {
             return __spreadArrays(prev, [schema.EncodeObject(current)]);
@@ -39,12 +61,20 @@ var ListToken = /** @class */ (function (_super) {
     };
     ListToken.prototype.Execute = function (val, semantics) {
         var schema = this.createToken(this.val.args[0], 0);
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return val.reduce(function (prev, current) {
             return __spreadArrays(prev, [schema.Execute(current, semantics)]);
         }, []);
     };
     ListToken.prototype.EncodeObject = function (args) {
         var schema = this.createToken(this.val.args[0], 0);
+        var err = this.isValid(args);
+        if (err) {
+            throw err;
+        }
         return args.reduce(function (prev, current) {
             return __spreadArrays(prev, [schema.EncodeObject(current)]);
         }, []);

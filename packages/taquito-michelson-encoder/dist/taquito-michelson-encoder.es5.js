@@ -1,5 +1,5 @@
 import BigNumber from 'bignumber.js';
-import { b58decode, encodePubKey, encodeKey, encodeKeyHash } from '@taquito/utils';
+import { b58decode, validateAddress, ValidationResult, encodePubKey, encodeKey, validatePublicKey, encodeKeyHash, validateKeyHash, validateSignature, validateChain } from '@taquito/utils';
 
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation. All rights reserved.
@@ -49,6 +49,17 @@ function __spreadArrays() {
     return r;
 }
 
+var TokenValidationError = /** @class */ (function () {
+    function TokenValidationError(value, token, baseMessage) {
+        this.value = value;
+        this.token = token;
+        this.name = 'ValidationError';
+        var annot = this.token.annot();
+        var annotText = annot ? "[" + annot + "] " : '';
+        this.message = "" + annotText + baseMessage;
+    }
+    return TokenValidationError;
+}());
 var Token = /** @class */ (function () {
     function Token(val, idx, fac) {
         this.val = val;
@@ -56,8 +67,26 @@ var Token = /** @class */ (function () {
         this.fac = fac;
         this.createToken = this.fac;
     }
+    Token.prototype.typeWithoutAnnotations = function () {
+        var removeArgsRec = function (val) {
+            if (val.args) {
+                return {
+                    prim: val.prim,
+                    args: val.args.map(function (x) { return removeArgsRec(x); }),
+                };
+            }
+            else {
+                return {
+                    prim: val.prim,
+                };
+            }
+        };
+        return removeArgsRec(this.val);
+    };
     Token.prototype.annot = function () {
-        return (Array.isArray(this.val.annots) ? this.val.annots[0] : String(this.idx)).replace(/(%|\:)(_Liq_entry_)?/, '');
+        return (Array.isArray(this.val.annots) && this.val.annots.length > 0
+            ? this.val.annots[0]
+            : String(this.idx)).replace(/(%|\:)(_Liq_entry_)?/, '');
     };
     Token.prototype.hasAnnotations = function () {
         return Array.isArray(this.val.annots) && this.val.annots.length;
@@ -67,7 +96,28 @@ var Token = /** @class */ (function () {
     };
     return Token;
 }());
+var ComparableToken = /** @class */ (function (_super) {
+    __extends(ComparableToken, _super);
+    function ComparableToken() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    ComparableToken.prototype.compare = function (o1, o2) {
+        return o1 < o2 ? -1 : 1;
+    };
+    return ComparableToken;
+}(Token));
 
+var BigMapValidationError = /** @class */ (function (_super) {
+    __extends(BigMapValidationError, _super);
+    function BigMapValidationError(value, token, message) {
+        var _this = _super.call(this, value, token, message) || this;
+        _this.value = value;
+        _this.token = token;
+        _this.name = 'BigMapValidationError';
+        return _this;
+    }
+    return BigMapValidationError;
+}(TokenValidationError));
 var BigMapToken = /** @class */ (function (_super) {
     __extends(BigMapToken, _super);
     function BigMapToken(val, idx, fac) {
@@ -97,10 +147,22 @@ var BigMapToken = /** @class */ (function (_super) {
             _a[this.KeySchema.ExtractSchema()] = this.ValueSchema.ExtractSchema(),
             _a;
     };
+    BigMapToken.prototype.isValid = function (value) {
+        if (typeof value === 'object') {
+            return null;
+        }
+        return new BigMapValidationError(value, this, 'Value must be an object');
+    };
     BigMapToken.prototype.Encode = function (args) {
         var _this = this;
         var val = args.pop();
-        return Object.keys(val).map(function (key) {
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
+        return Object.keys(val)
+            .sort(this.KeySchema.compare)
+            .map(function (key) {
             return {
                 prim: 'Elt',
                 args: [_this.KeySchema.Encode([key]), _this.ValueSchema.EncodeObject(val[key])],
@@ -110,7 +172,13 @@ var BigMapToken = /** @class */ (function (_super) {
     BigMapToken.prototype.EncodeObject = function (args) {
         var _this = this;
         var val = args;
-        return Object.keys(val).map(function (key) {
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
+        return Object.keys(val)
+            .sort(this.KeySchema.compare)
+            .map(function (key) {
             return {
                 prim: 'Elt',
                 args: [_this.KeySchema.EncodeObject(key), _this.ValueSchema.EncodeObject(val[key])],
@@ -330,6 +398,12 @@ var PairToken = /** @class */ (function (_super) {
         }
         return newSig;
     };
+    PairToken.prototype.ToBigMapKey = function (val) {
+        return {
+            key: this.EncodeObject(val),
+            type: this.typeWithoutAnnotations(),
+        };
+    };
     PairToken.prototype.EncodeObject = function (args) {
         var leftToken = this.createToken(this.val.args[0], this.idx);
         var keyCount = 1;
@@ -389,6 +463,17 @@ var PairToken = /** @class */ (function (_super) {
     return PairToken;
 }(Token));
 
+var NatValidationError = /** @class */ (function (_super) {
+    __extends(NatValidationError, _super);
+    function NatValidationError(value, token, message) {
+        var _this = _super.call(this, value, token, message) || this;
+        _this.value = value;
+        _this.token = token;
+        _this.name = 'NatValidationError';
+        return _this;
+    }
+    return NatValidationError;
+}(TokenValidationError));
 var NatToken = /** @class */ (function (_super) {
     __extends(NatToken, _super);
     function NatToken(val, idx, fac) {
@@ -403,9 +488,29 @@ var NatToken = /** @class */ (function (_super) {
     };
     NatToken.prototype.Encode = function (args) {
         var val = args.pop();
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { int: String(val).toString() };
     };
+    NatToken.prototype.isValid = function (val) {
+        var bigNumber = new BigNumber(val);
+        if (bigNumber.isNaN()) {
+            return new NatValidationError(val, this, "Value is not a number: " + val);
+        }
+        else if (bigNumber.isNegative()) {
+            return new NatValidationError(val, this, "Value cannot be negative: " + val);
+        }
+        else {
+            return null;
+        }
+    };
     NatToken.prototype.EncodeObject = function (val) {
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { int: String(val).toString() };
     };
     NatToken.prototype.ExtractSchema = function () {
@@ -423,7 +528,7 @@ var NatToken = /** @class */ (function (_super) {
     };
     NatToken.prim = 'nat';
     return NatToken;
-}(Token));
+}(ComparableToken));
 
 var StringToken = /** @class */ (function (_super) {
     __extends(StringToken, _super);
@@ -460,8 +565,19 @@ var StringToken = /** @class */ (function (_super) {
     };
     StringToken.prim = 'string';
     return StringToken;
-}(Token));
+}(ComparableToken));
 
+var AddressValidationError = /** @class */ (function (_super) {
+    __extends(AddressValidationError, _super);
+    function AddressValidationError(value, token, message) {
+        var _this = _super.call(this, value, token, message) || this;
+        _this.value = value;
+        _this.token = token;
+        _this.name = 'AddressValidationError';
+        return _this;
+    }
+    return AddressValidationError;
+}(TokenValidationError));
 var AddressToken = /** @class */ (function (_super) {
     __extends(AddressToken, _super);
     function AddressToken(val, idx, fac) {
@@ -478,11 +594,25 @@ var AddressToken = /** @class */ (function (_super) {
             type: { prim: 'bytes' },
         };
     };
+    AddressToken.prototype.isValid = function (value) {
+        if (validateAddress(value) !== ValidationResult.VALID) {
+            return new AddressValidationError(value, this, "Address is not valid: " + value);
+        }
+        return null;
+    };
     AddressToken.prototype.Encode = function (args) {
         var val = args.pop();
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { string: val };
     };
     AddressToken.prototype.EncodeObject = function (val) {
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { string: val };
     };
     // tslint:disable-next-line: variable-name
@@ -503,10 +633,38 @@ var AddressToken = /** @class */ (function (_super) {
         }
         return encodePubKey(bytes);
     };
+    AddressToken.prototype.compare = function (address1, address2) {
+        var isImplicit = function (address) {
+            return address.startsWith('tz');
+        };
+        if (isImplicit(address1) && isImplicit(address2)) {
+            return _super.prototype.compare.call(this, address1, address2);
+        }
+        else if (isImplicit(address1)) {
+            return -1;
+        }
+        else if (isImplicit(address2)) {
+            return 1;
+        }
+        else {
+            return _super.prototype.compare.call(this, address1, address2);
+        }
+    };
     AddressToken.prim = 'address';
     return AddressToken;
-}(Token));
+}(ComparableToken));
 
+var MapValidationError = /** @class */ (function (_super) {
+    __extends(MapValidationError, _super);
+    function MapValidationError(value, token, message) {
+        var _this = _super.call(this, value, token, message) || this;
+        _this.value = value;
+        _this.token = token;
+        _this.name = 'MapValidationError';
+        return _this;
+    }
+    return MapValidationError;
+}(TokenValidationError));
 var MapToken = /** @class */ (function (_super) {
     __extends(MapToken, _super);
     function MapToken(val, idx, fac) {
@@ -530,6 +688,12 @@ var MapToken = /** @class */ (function (_super) {
         enumerable: true,
         configurable: true
     });
+    MapToken.prototype.isValid = function (value) {
+        if (typeof value === 'object') {
+            return null;
+        }
+        return new MapValidationError(value, this, 'Value must be an object');
+    };
     MapToken.prototype.Execute = function (val, semantics) {
         var _this = this;
         return val.reduce(function (prev, current) {
@@ -540,7 +704,13 @@ var MapToken = /** @class */ (function (_super) {
     MapToken.prototype.Encode = function (args) {
         var _this = this;
         var val = args.pop();
-        return Object.keys(val).map(function (key) {
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
+        return Object.keys(val)
+            .sort(this.KeySchema.compare)
+            .map(function (key) {
             return {
                 prim: 'Elt',
                 args: [_this.KeySchema.Encode([key]), _this.ValueSchema.EncodeObject(val[key])],
@@ -550,7 +720,13 @@ var MapToken = /** @class */ (function (_super) {
     MapToken.prototype.EncodeObject = function (args) {
         var _this = this;
         var val = args;
-        return Object.keys(val).map(function (key) {
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
+        return Object.keys(val)
+            .sort(this.KeySchema.compare)
+            .map(function (key) {
             return {
                 prim: 'Elt',
                 args: [_this.KeySchema.EncodeObject(key), _this.ValueSchema.EncodeObject(val[key])],
@@ -581,7 +757,7 @@ var BoolToken = /** @class */ (function (_super) {
     };
     BoolToken.prototype.Encode = function (args) {
         var val = args.pop();
-        return val ? 'true' : 'false';
+        return { prim: val ? 'True' : 'False' };
     };
     BoolToken.prototype.EncodeObject = function (val) {
         return { prim: val ? 'True' : 'False' };
@@ -593,6 +769,17 @@ var BoolToken = /** @class */ (function (_super) {
     return BoolToken;
 }(Token));
 
+var ContractValidationError = /** @class */ (function (_super) {
+    __extends(ContractValidationError, _super);
+    function ContractValidationError(value, token, message) {
+        var _this = _super.call(this, value, token, message) || this;
+        _this.value = value;
+        _this.token = token;
+        _this.name = 'ContractValidationError';
+        return _this;
+    }
+    return ContractValidationError;
+}(TokenValidationError));
 var ContractToken = /** @class */ (function (_super) {
     __extends(ContractToken, _super);
     function ContractToken(val, idx, fac) {
@@ -602,6 +789,13 @@ var ContractToken = /** @class */ (function (_super) {
         _this.fac = fac;
         return _this;
     }
+    ContractToken.prototype.isValid = function (value) {
+        // tz1,tz2 and tz3 seems to be valid contract values (for Unit contract)
+        if (validateAddress(value) !== ValidationResult.VALID) {
+            return new ContractValidationError(value, this, 'Contract address is not valid');
+        }
+        return null;
+    };
     ContractToken.prototype.Execute = function (val) {
         if (val.string) {
             return val.string;
@@ -610,9 +804,17 @@ var ContractToken = /** @class */ (function (_super) {
     };
     ContractToken.prototype.Encode = function (args) {
         var val = args.pop();
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { string: val };
     };
     ContractToken.prototype.EncodeObject = function (val) {
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { string: val };
     };
     ContractToken.prototype.ExtractSchema = function () {
@@ -622,6 +824,17 @@ var ContractToken = /** @class */ (function (_super) {
     return ContractToken;
 }(Token));
 
+var ListValidationError = /** @class */ (function (_super) {
+    __extends(ListValidationError, _super);
+    function ListValidationError(value, token, message) {
+        var _this = _super.call(this, value, token, message) || this;
+        _this.value = value;
+        _this.token = token;
+        _this.name = 'ListValidationError';
+        return _this;
+    }
+    return ListValidationError;
+}(TokenValidationError));
 var ListToken = /** @class */ (function (_super) {
     __extends(ListToken, _super);
     function ListToken(val, idx, fac) {
@@ -631,8 +844,18 @@ var ListToken = /** @class */ (function (_super) {
         _this.fac = fac;
         return _this;
     }
+    ListToken.prototype.isValid = function (value) {
+        if (Array.isArray(value)) {
+            return null;
+        }
+        return new ListValidationError(value, this, 'Value must be an array');
+    };
     ListToken.prototype.Encode = function (args) {
         var val = args.pop();
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         var schema = this.createToken(this.val.args[0], 0);
         return val.reduce(function (prev, current) {
             return __spreadArrays(prev, [schema.EncodeObject(current)]);
@@ -640,12 +863,20 @@ var ListToken = /** @class */ (function (_super) {
     };
     ListToken.prototype.Execute = function (val, semantics) {
         var schema = this.createToken(this.val.args[0], 0);
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return val.reduce(function (prev, current) {
             return __spreadArrays(prev, [schema.Execute(current, semantics)]);
         }, []);
     };
     ListToken.prototype.EncodeObject = function (args) {
         var schema = this.createToken(this.val.args[0], 0);
+        var err = this.isValid(args);
+        if (err) {
+            throw err;
+        }
         return args.reduce(function (prev, current) {
             return __spreadArrays(prev, [schema.EncodeObject(current)]);
         }, []);
@@ -657,6 +888,17 @@ var ListToken = /** @class */ (function (_super) {
     return ListToken;
 }(Token));
 
+var MutezValidationError = /** @class */ (function (_super) {
+    __extends(MutezValidationError, _super);
+    function MutezValidationError(value, token, message) {
+        var _this = _super.call(this, value, token, message) || this;
+        _this.value = value;
+        _this.token = token;
+        _this.name = 'MutezValidationError';
+        return _this;
+    }
+    return MutezValidationError;
+}(TokenValidationError));
 var MutezToken = /** @class */ (function (_super) {
     __extends(MutezToken, _super);
     function MutezToken(val, idx, fac) {
@@ -672,11 +914,28 @@ var MutezToken = /** @class */ (function (_super) {
     MutezToken.prototype.ExtractSchema = function () {
         return MutezToken.prim;
     };
+    MutezToken.prototype.isValid = function (val) {
+        var bigNumber = new BigNumber(val);
+        if (bigNumber.isNaN()) {
+            return new MutezValidationError(val, this, "Value is not a number: " + val);
+        }
+        else {
+            return null;
+        }
+    };
     MutezToken.prototype.Encode = function (args) {
         var val = args.pop();
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { int: String(val).toString() };
     };
     MutezToken.prototype.EncodeObject = function (val) {
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { int: String(val).toString() };
     };
     MutezToken.prototype.ToBigMapKey = function (val) {
@@ -691,8 +950,19 @@ var MutezToken = /** @class */ (function (_super) {
     };
     MutezToken.prim = 'mutez';
     return MutezToken;
-}(Token));
+}(ComparableToken));
 
+var BytesValidationError = /** @class */ (function (_super) {
+    __extends(BytesValidationError, _super);
+    function BytesValidationError(value, token, message) {
+        var _this = _super.call(this, value, token, message) || this;
+        _this.value = value;
+        _this.token = token;
+        _this.name = 'BytesValidationError';
+        return _this;
+    }
+    return BytesValidationError;
+}(TokenValidationError));
 var BytesToken = /** @class */ (function (_super) {
     __extends(BytesToken, _super);
     function BytesToken(val, idx, fac) {
@@ -708,11 +978,27 @@ var BytesToken = /** @class */ (function (_super) {
             type: { prim: BytesToken.prim },
         };
     };
+    BytesToken.prototype.isValid = function (val) {
+        if (typeof val === 'string' && /^[0-9a-fA-F]*$/.test(val) && val.length % 2 === 0) {
+            return null;
+        }
+        else {
+            return new BytesValidationError(val, this, "Invalid bytes: " + val);
+        }
+    };
     BytesToken.prototype.Encode = function (args) {
         var val = args.pop();
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { bytes: String(val).toString() };
     };
     BytesToken.prototype.EncodeObject = function (val) {
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { bytes: String(val).toString() };
     };
     BytesToken.prototype.Execute = function (val) {
@@ -731,7 +1017,7 @@ var BytesToken = /** @class */ (function (_super) {
     };
     BytesToken.prim = 'bytes';
     return BytesToken;
-}(Token));
+}(ComparableToken));
 
 var OptionToken = /** @class */ (function (_super) {
     __extends(OptionToken, _super);
@@ -827,8 +1113,19 @@ var TimestampToken = /** @class */ (function (_super) {
     };
     TimestampToken.prim = 'timestamp';
     return TimestampToken;
-}(Token));
+}(ComparableToken));
 
+var IntValidationError = /** @class */ (function (_super) {
+    __extends(IntValidationError, _super);
+    function IntValidationError(value, token, message) {
+        var _this = _super.call(this, value, token, message) || this;
+        _this.value = value;
+        _this.token = token;
+        _this.name = 'IntValidationError';
+        return _this;
+    }
+    return IntValidationError;
+}(TokenValidationError));
 var IntToken = /** @class */ (function (_super) {
     __extends(IntToken, _super);
     function IntToken(val, idx, fac) {
@@ -844,11 +1141,28 @@ var IntToken = /** @class */ (function (_super) {
     IntToken.prototype.ExtractSchema = function () {
         return IntToken.prim;
     };
+    IntToken.prototype.isValid = function (val) {
+        var bigNumber = new BigNumber(val);
+        if (bigNumber.isNaN()) {
+            return new IntValidationError(val, this, "Value is not a number: " + val);
+        }
+        else {
+            return null;
+        }
+    };
     IntToken.prototype.Encode = function (args) {
         var val = args.pop();
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { int: String(val).toString() };
     };
     IntToken.prototype.EncodeObject = function (val) {
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { int: String(val).toString() };
     };
     IntToken.prototype.ToBigMapKey = function (val) {
@@ -863,7 +1177,7 @@ var IntToken = /** @class */ (function (_super) {
     };
     IntToken.prim = 'int';
     return IntToken;
-}(Token));
+}(ComparableToken));
 
 var UnitToken = /** @class */ (function (_super) {
     __extends(UnitToken, _super);
@@ -882,7 +1196,7 @@ var UnitToken = /** @class */ (function (_super) {
         return { prim: 'Unit' };
     };
     UnitToken.prototype.Execute = function () {
-        return null;
+        return UnitValue;
     };
     UnitToken.prototype.ExtractSchema = function () {
         return UnitToken.prim;
@@ -891,6 +1205,17 @@ var UnitToken = /** @class */ (function (_super) {
     return UnitToken;
 }(Token));
 
+var KeyValidationError = /** @class */ (function (_super) {
+    __extends(KeyValidationError, _super);
+    function KeyValidationError(value, token, message) {
+        var _this = _super.call(this, value, token, message) || this;
+        _this.value = value;
+        _this.token = token;
+        _this.name = 'KeyValidationError';
+        return _this;
+    }
+    return KeyValidationError;
+}(TokenValidationError));
 var KeyToken = /** @class */ (function (_super) {
     __extends(KeyToken, _super);
     function KeyToken(val, idx, fac) {
@@ -906,11 +1231,25 @@ var KeyToken = /** @class */ (function (_super) {
         }
         return encodeKey(val.bytes);
     };
+    KeyToken.prototype.isValid = function (value) {
+        if (validatePublicKey(value) !== ValidationResult.VALID) {
+            return new KeyValidationError(value, this, 'Key is not valid');
+        }
+        return null;
+    };
     KeyToken.prototype.Encode = function (args) {
         var val = args.pop();
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { string: val };
     };
     KeyToken.prototype.EncodeObject = function (val) {
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { string: val };
     };
     KeyToken.prototype.ExtractSchema = function () {
@@ -920,6 +1259,17 @@ var KeyToken = /** @class */ (function (_super) {
     return KeyToken;
 }(Token));
 
+var KeyHashValidationError = /** @class */ (function (_super) {
+    __extends(KeyHashValidationError, _super);
+    function KeyHashValidationError(value, token, message) {
+        var _this = _super.call(this, value, token, message) || this;
+        _this.value = value;
+        _this.token = token;
+        _this.name = 'KeyHashValidationError';
+        return _this;
+    }
+    return KeyHashValidationError;
+}(TokenValidationError));
 var KeyHashToken = /** @class */ (function (_super) {
     __extends(KeyHashToken, _super);
     function KeyHashToken(val, idx, fac) {
@@ -935,11 +1285,25 @@ var KeyHashToken = /** @class */ (function (_super) {
         }
         return encodeKeyHash(val.bytes);
     };
+    KeyHashToken.prototype.isValid = function (value) {
+        if (validateKeyHash(value) !== ValidationResult.VALID) {
+            return new KeyHashValidationError(value, this, "KeyHash is not valid: " + value);
+        }
+        return null;
+    };
     KeyHashToken.prototype.Encode = function (args) {
         var val = args.pop();
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { string: val };
     };
     KeyHashToken.prototype.EncodeObject = function (val) {
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { string: val };
     };
     KeyHashToken.prototype.ExtractSchema = function () {
@@ -961,8 +1325,19 @@ var KeyHashToken = /** @class */ (function (_super) {
     };
     KeyHashToken.prim = 'key_hash';
     return KeyHashToken;
-}(Token));
+}(ComparableToken));
 
+var SignatureValidationError = /** @class */ (function (_super) {
+    __extends(SignatureValidationError, _super);
+    function SignatureValidationError(value, token, message) {
+        var _this = _super.call(this, value, token, message) || this;
+        _this.value = value;
+        _this.token = token;
+        _this.name = 'SignatureValidationError';
+        return _this;
+    }
+    return SignatureValidationError;
+}(TokenValidationError));
 var SignatureToken = /** @class */ (function (_super) {
     __extends(SignatureToken, _super);
     function SignatureToken(val, idx, fac) {
@@ -975,11 +1350,25 @@ var SignatureToken = /** @class */ (function (_super) {
     SignatureToken.prototype.Execute = function (val) {
         return val.string;
     };
+    SignatureToken.prototype.isValid = function (value) {
+        if (validateSignature(value) !== ValidationResult.VALID) {
+            return new SignatureValidationError(value, this, 'Signature is not valid');
+        }
+        return null;
+    };
     SignatureToken.prototype.Encode = function (args) {
         var val = args.pop();
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { string: val };
     };
     SignatureToken.prototype.EncodeObject = function (val) {
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { string: val };
     };
     SignatureToken.prototype.ExtractSchema = function () {
@@ -1053,6 +1442,17 @@ var OperationToken = /** @class */ (function (_super) {
     return OperationToken;
 }(Token));
 
+var SetValidationError = /** @class */ (function (_super) {
+    __extends(SetValidationError, _super);
+    function SetValidationError(value, token, message) {
+        var _this = _super.call(this, value, token, message) || this;
+        _this.value = value;
+        _this.token = token;
+        _this.name = 'SetValidationError';
+        return _this;
+    }
+    return SetValidationError;
+}(TokenValidationError));
 var SetToken = /** @class */ (function (_super) {
     __extends(SetToken, _super);
     function SetToken(val, idx, fac) {
@@ -1062,23 +1462,44 @@ var SetToken = /** @class */ (function (_super) {
         _this.fac = fac;
         return _this;
     }
+    Object.defineProperty(SetToken.prototype, "KeySchema", {
+        get: function () {
+            return this.createToken(this.val.args[0], 0);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SetToken.prototype.isValid = function (value) {
+        if (Array.isArray(value)) {
+            return null;
+        }
+        return new SetValidationError(value, this, 'Value must be an array');
+    };
     SetToken.prototype.Encode = function (args) {
+        var _this = this;
         var val = args.pop();
-        var schema = this.createToken(this.val.args[0], 0);
-        return val.reduce(function (prev, current) {
-            return __spreadArrays(prev, [schema.EncodeObject(current)]);
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
+        return val.sort(this.KeySchema.compare).reduce(function (prev, current) {
+            return __spreadArrays(prev, [_this.KeySchema.EncodeObject(current)]);
         }, []);
     };
     SetToken.prototype.Execute = function (val, semantics) {
-        var schema = this.createToken(this.val.args[0], 0);
+        var _this = this;
         return val.reduce(function (prev, current) {
-            return __spreadArrays(prev, [schema.Execute(current, semantics)]);
+            return __spreadArrays(prev, [_this.KeySchema.Execute(current, semantics)]);
         }, []);
     };
     SetToken.prototype.EncodeObject = function (args) {
-        var schema = this.createToken(this.val.args[0], 0);
-        return args.reduce(function (prev, current) {
-            return __spreadArrays(prev, [schema.EncodeObject(current)]);
+        var _this = this;
+        var err = this.isValid(args);
+        if (err) {
+            throw err;
+        }
+        return args.sort(this.KeySchema.compare).reduce(function (prev, current) {
+            return __spreadArrays(prev, [_this.KeySchema.EncodeObject(current)]);
         }, []);
     };
     SetToken.prototype.ExtractSchema = function () {
@@ -1088,6 +1509,17 @@ var SetToken = /** @class */ (function (_super) {
     return SetToken;
 }(Token));
 
+var ChainIDValidationError = /** @class */ (function (_super) {
+    __extends(ChainIDValidationError, _super);
+    function ChainIDValidationError(value, token, message) {
+        var _this = _super.call(this, value, token, message) || this;
+        _this.value = value;
+        _this.token = token;
+        _this.name = 'ChainIDValidationError';
+        return _this;
+    }
+    return ChainIDValidationError;
+}(TokenValidationError));
 var ChainIDToken = /** @class */ (function (_super) {
     __extends(ChainIDToken, _super);
     function ChainIDToken(val, idx, fac) {
@@ -1097,6 +1529,12 @@ var ChainIDToken = /** @class */ (function (_super) {
         _this.fac = fac;
         return _this;
     }
+    ChainIDToken.prototype.isValid = function (value) {
+        if (validateChain(value) !== ValidationResult.VALID) {
+            return new ChainIDValidationError(value, this, 'ChainID is not valid');
+        }
+        return null;
+    };
     ChainIDToken.prototype.Execute = function (val) {
         return val[Object.keys(val)[0]];
     };
@@ -1105,9 +1543,17 @@ var ChainIDToken = /** @class */ (function (_super) {
     };
     ChainIDToken.prototype.Encode = function (args) {
         var val = args.pop();
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { string: val };
     };
     ChainIDToken.prototype.EncodeObject = function (val) {
+        var err = this.isValid(val);
+        if (err) {
+            throw err;
+        }
         return { string: val };
     };
     // tslint:disable-next-line: variable-name
@@ -1123,7 +1569,7 @@ var ChainIDToken = /** @class */ (function (_super) {
     };
     ChainIDToken.prim = 'chain_id';
     return ChainIDToken;
-}(Token));
+}(ComparableToken));
 
 var tokens = [
     PairToken,
@@ -1244,6 +1690,9 @@ var Schema = /** @class */ (function () {
             return this.root.EncodeObject(_value);
         }
         catch (ex) {
+            if (ex instanceof TokenValidationError) {
+                throw ex;
+            }
             throw new Error("Unable to encode storage object. " + ex);
         }
     };
@@ -1312,7 +1761,15 @@ var ParameterSchema = /** @class */ (function () {
         for (var _i = 0; _i < arguments.length; _i++) {
             args[_i] = arguments[_i];
         }
-        return this.root.Encode(args.reverse());
+        try {
+            return this.root.Encode(args.reverse());
+        }
+        catch (ex) {
+            if (ex instanceof TokenValidationError) {
+                throw ex;
+            }
+            throw new Error("Unable to encode storage object. " + ex);
+        }
     };
     ParameterSchema.prototype.ExtractSchema = function () {
         return this.root.ExtractSchema();
@@ -1323,5 +1780,7 @@ var ParameterSchema = /** @class */ (function () {
     return ParameterSchema;
 }());
 
-export { ParameterSchema, Schema };
+var UnitValue = Symbol();
+
+export { AddressValidationError, BigMapValidationError, BytesValidationError, ChainIDValidationError, ContractValidationError, IntValidationError, KeyHashValidationError, KeyValidationError, ListValidationError, MapValidationError, MutezValidationError, NatValidationError, ParameterSchema, Schema, SetValidationError, SignatureValidationError, UnitValue };
 //# sourceMappingURL=taquito-michelson-encoder.es5.js.map

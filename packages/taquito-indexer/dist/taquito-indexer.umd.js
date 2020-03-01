@@ -63,7 +63,7 @@
     var IndexerClient = /** @class */ (function () {
         /**
          *
-         * @param url indexer root url (default https://tezrpc.me)
+         * @param url indexer root url (default https://mainnet.tezrpc.me)
          * @param httpBackend Http backend that issue http request.
          * You can override it by providing your own if you which to hook in the request/response
          *

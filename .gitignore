@@ -9,4 +9,5 @@ compiled
 .awcache
 .rpt2_cache
 website/build/
+manifest.json
 !.vscode/extensions.json

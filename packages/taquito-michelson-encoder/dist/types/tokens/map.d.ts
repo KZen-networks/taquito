@@ -1,4 +1,10 @@
-import { Token, TokenFactory, Semantic } from './token';
+import { Token, TokenFactory, Semantic, TokenValidationError, ComparableToken } from './token';
+export declare class MapValidationError extends TokenValidationError {
+    value: any;
+    token: MapToken;
+    name: string;
+    constructor(value: any, token: MapToken, message: string);
+}
 export declare class MapToken extends Token {
     protected val: {
         prim: string;
@@ -14,9 +20,8 @@ export declare class MapToken extends Token {
         annots: any[];
     }, idx: number, fac: TokenFactory);
     readonly ValueSchema: Token;
-    readonly KeySchema: Token & {
-        ToKey: (x: any) => string;
-    };
+    readonly KeySchema: ComparableToken;
+    private isValid;
     Execute(val: any[], semantics?: Semantic): {
         [key: string]: any;
     };

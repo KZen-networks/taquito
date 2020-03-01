@@ -61,7 +61,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var http_utils_1 = require("@taquito/http-utils");
 var bignumber_js_1 = require("bignumber.js");
 var utils_1 = require("./utils/utils");
-var defaultRPC = 'https://tezrpc.me';
+var opkind_1 = require("./opkind");
+exports.OpKind = opkind_1.OpKind;
+var defaultRPC = 'https://mainnet.tezrpc.me';
 var defaultChain = 'main';
 var defaultRPCOptions = { block: 'head' };
 /***
@@ -70,12 +72,12 @@ var defaultRPCOptions = { block: 'head' };
 var RpcClient = /** @class */ (function () {
     /**
      *
-     * @param url rpc root url (default https://tezrpc.me)
+     * @param url rpc root url (default https://mainnet.tezrpc.me)
      * @param chain chain (default main)
      * @param httpBackend Http backend that issue http request.
      * You can override it by providing your own if you which to hook in the request/response
      *
-     * @example new RpcClient('https://tezrpc.me', 'main') this will use https://tezrpc.me/chains/main
+     * @example new RpcClient('https://mainnet.tezrpc.me', 'main') this will use https://mainnet.tezrpc.me/chains/main
      */
     function RpcClient(url, chain, httpBackend) {
         if (url === void 0) { url = defaultRPC; }
@@ -203,28 +205,6 @@ var RpcClient = /** @class */ (function () {
                         contractResponse = _b.sent();
                         return [2 /*return*/, __assign(__assign({}, contractResponse), { balance: new bignumber_js_1.default(contractResponse.balance) })];
                 }
-            });
-        });
-    };
-    /**
-     *
-     * @param address contract address from which we want to retrieve the manager
-     * @param options contains generic configuration for rpc calls
-     *
-     * @deprecated Remove in 005
-     *
-     * @description Access the manager of a contract.
-     *
-     * @see http://tezos.gitlab.io/master/api/rpc.html#get-block-id-context-contracts-contract-id-manager
-     */
-    RpcClient.prototype.getManager = function (address, _a) {
-        var block = (_a === void 0 ? defaultRPCOptions : _a).block;
-        return __awaiter(this, void 0, void 0, function () {
-            return __generator(this, function (_b) {
-                return [2 /*return*/, this.httpBackend.createRequest({
-                        url: this.createURL("/chains/" + this.chain + "/blocks/" + block + "/context/contracts/" + address + "/manager"),
-                        method: 'GET',
-                    })];
             });
         });
     };

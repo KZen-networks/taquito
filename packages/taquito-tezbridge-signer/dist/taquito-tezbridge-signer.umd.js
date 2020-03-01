@@ -87,7 +87,7 @@
         };
         TezBridgeSigner.prototype.sign = function (bytes, _watermark) {
             return __awaiter(this, void 0, void 0, function () {
-                var prefixSig, decoded;
+                var prefixSig, pref, decoded;
                 return __generator(this, function (_a) {
                     switch (_a.label) {
                         case 0: return [4 /*yield*/, tezbridge.request({
@@ -96,7 +96,11 @@
                             })];
                         case 1:
                             prefixSig = _a.sent();
-                            decoded = utils.b58cdecode(prefixSig, utils.prefix[prefixSig.substr(0, 5)]);
+                            pref = prefixSig.substr(0, 5);
+                            if (!utils.isValidPrefix(pref)) {
+                                throw new Error('Unsupported signature given by tezbridge: ' + prefixSig);
+                            }
+                            decoded = utils.b58cdecode(prefixSig, utils.prefix[pref]);
                             return [2 /*return*/, {
                                     bytes: bytes,
                                     sig: utils.b58cencode(decoded, utils.prefix.sig),
