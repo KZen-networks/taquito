@@ -6,7 +6,7 @@ const { prefix, b58cencode } = require('../packages/taquito-utils/dist/lib/taqui
 const BigNumber = require('bignumber.js');
 
 const rpcUrl = {
-  babylonnet: 'https://rpcalpha.tzbeta.net/',
+  carthagenet: 'https://carthagenet.smartpy.io/',
   mainnet: 'https://mainnet.tezrpc.me'
 };
 

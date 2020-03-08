@@ -1,7 +1,7 @@
 const { delegate, getBalance, generateNewAccount, transfer, transferAll } = require('./index');
 const assert = require('assert');
 
-const network = 'babylonnet';
+const network = 'carthagenet';
 
 const revealedAccount1 = {
   address: 'tz2MC3sfZJjbjXV4nv5KJPhEWgUStr9Yvanw',
@@ -13,15 +13,9 @@ const revealedAccount2 = {
   privateKey: 'spsk3B46kboUhTf2dRpCaUNZGtMoHaR2AxQ8JjfbpCZNyA712uQgDN'
 };
 
-const delegateAddress = 'tz1PirboZKFVqkfE45hVLpkpXaZtLk3mqC17';
+const delegateAddress = 'tz1VxS7ff4YnZRs8b4mMP4WaMVpoQjuo1rjf';
 
 const MUTEZ_IN_TZ = 1000000;
-
-function sumFieldValues(op, fieldName) {
-  return op.results.reduce((sum, currResult) => {
-    return sum + parseInt(currResult[fieldName]);
-  }, 0);
-}
 
 describe('Tezos API tests', () => {
   it('transfer from revealed account to old implicit account', async () => {

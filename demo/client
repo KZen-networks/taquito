@@ -8,15 +8,15 @@ const path = require('path');
 const low = require('lowdb');
 const FileSync = require('lowdb/adapters/FileSync');
 
-const { InMemorySigner, PublicOnlySigner } = require('../packages/taquito-signer/dist/lib');
+const { PublicOnlySigner } = require('../packages/taquito-signer/dist/lib');
 
-const { Tezos, DEFAULT_GAS_LIMIT } = require('../packages/taquito/dist/lib/taquito');
-const { prefix, b58cencode, b58cdecode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
+const { Tezos } = require('../packages/taquito/dist/lib/taquito');
+const { prefix, b58cdecode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
 
 const CLIENT_DB_PATH = path.join(__dirname, 'client-db');
 
 const rpcUrl = {
-  babylonnet: 'https://rpcalpha.tzbeta.net/',
+  carthagenet: 'https://carthagenet.smartpy.io/',
   mainnet: 'https://mainnet.tezrpc.me'
 };
 
@@ -36,7 +36,7 @@ db.defaults({ addresses: [] }).write();
 function logOp(op) {
   /* When an operation is from a fresh address (i.e. that hasn't sent yet), it includes two results - 'reveal' and 'transaction'.
    *
-   * Example as viewed in https://babylonnet.tzstats.com/opT57vGYVLssoFntRMzurUGCn6xUGkQKDYoVHTsZDkwpP4UdKwK :
+   * Example as viewed in https://carthagenet.tzstats.com/opT57vGYVLssoFntRMzurUGCn6xUGkQKDYoVHTsZDkwpP4UdKwK :
    *
    * TransactionOperation {
       hash: 'opT57vGYVLssoFntRMzurUGCn6xUGkQKDYoVHTsZDkwpP4UdKwK',
@@ -117,9 +117,9 @@ program
 program
   .command('balance <address>')
   .alias('b')
-  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .option('-n, --network [name]', 'Name of network ("carthagenet" or "mainnet")')
   .action(async (address, options) => {
-    const mutezBalance = await getBalance(address, options.network || 'babylonnet');
+    const mutezBalance = await getBalance(address, options.network || 'carthagenet');
     const xtzBalance = Tezos.format('mutez', 'tz', mutezBalance);
     console.log(`${xtzBalance} XTZ`);
   });
@@ -128,10 +128,10 @@ program
 program
   .command('transfer <from> <to> <xtz_amount>')
   .alias('t')
-  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .option('-n, --network [name]', 'Name of network ("carthagenet" or "mainnet")')
   .action(async (from, to, xtz_amount, options) => {
     const { privateKey } = db.get('addresses').find({address: from}).value();
-    const op = await transfer(privateKey, to, xtz_amount, options.network || 'babylonnet');
+    const op = await transfer(privateKey, to, xtz_amount, options.network || 'carthagenet');
     logOp(op);
     const id = await op.confirmation();
     console.log('id =', id);
@@ -140,9 +140,9 @@ program
 program
   .command('transfer-all <from> <to>')
   .alias('ta')
-  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .option('-n, --network [name]', 'Name of network ("carthagenet" or "mainnet")')
   .action(async (from, to, options) => {
-    const network = options.network || 'babylonnet';
+    const network = options.network || 'carthagenet';
     const { privateKey } = db.get('addresses').find({address: from}).value();
     const op = await transferAll(privateKey, to, network);
     logOp(op);
@@ -153,12 +153,12 @@ program
 program
   .command('get-transfer-hash <from_x> <from_y> <to> <xtz_amount>')
   .alias('gth')
-  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .option('-n, --network [name]', 'Name of network ("carthagenet" or "mainnet")')
   .action(async (fromX, fromY, to, xtz_amount, options) => {
     const publicKey = {x: fromX, y: fromY};
     Tezos.setProvider({
       signer: new PublicOnlySigner(publicKey),
-      rpc: rpcUrl[options.network || 'babylonnet']
+      rpc: rpcUrl[options.network || 'carthagenet']
     });
     try {
       console.log('#1');
@@ -172,11 +172,11 @@ program
 program
   .command('delegate <from> <to>')
   .description('Delegate funds to a baker account')
-  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .option('-n, --network [name]', 'Name of network ("carthagenet" or "mainnet")')
   .option('-t, --trackingId [id]', '3 digits number to signal delegator through gas limit suffix')
   .action(async (from, to, options) => {
     const { privateKey } = db.get('addresses').find({address: from}).value();
-    const op = await delegate(privateKey, to, options.network || 'babylonnet', options.trackingId);
+    const op = await delegate(privateKey, to, options.network || 'carthagenet', options.trackingId);
     logOp(op);
     const id = await op.confirmation();
     console.log('id =', id);
@@ -185,12 +185,12 @@ program
 program
   .command('get-delegate-hash <from_x> <from_y> <to>')
   .description('Delegate funds to a baker account')
-  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .option('-n, --network [name]', 'Name of network ("carthagenet" or "mainnet")')
   .action(async (fromX, fromY, to, options) => {
     const publicKey = {x: fromX, y: fromY};
     Tezos.setProvider({
       signer: new PublicOnlySigner(publicKey),
-      rpc: rpcUrl[options.network || 'babylonnet']
+      rpc: rpcUrl[options.network || 'carthagenet']
     });
 
     const forgedBytes = await Tezos.contract.getDelegateSignatureHash({source: from, delegate: to});
@@ -200,9 +200,9 @@ program
 program
   .command('subscribe <address>')
   .description('Subscribe to get notifications regarding operations involving given address')
-  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .option('-n, --network [name]', 'Name of network ("carthagenet" or "mainnet")')
   .action(async (address, options) => {
-    const rpc = rpcUrl[options.network || 'babylonnet'];
+    const rpc = rpcUrl[options.network || 'carthagenet'];
     console.log('rpc =', rpc);
     Tezos.setProvider({
       stream: rpc,
@@ -246,9 +246,9 @@ program
   .command('is-active <address>')
   .alias('ia')
   .description('is given Tezos address active')
-  .option('-n, --network [name]', 'Name of network ("babylonnet" or "mainnet")')
+  .option('-n, --network [name]', 'Name of network ("carthagenet" or "mainnet")')
   .action(async (address, options) => {
-    const network = options.network || 'babylonnet';
+    const network = options.network || 'carthagenet';
     Tezos.setProvider({
       rpc: rpcUrl[network]
     });
