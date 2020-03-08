@@ -30,7 +30,7 @@ export declare class RpcClient {
      *
      * @description Get the block's hash, its unique identifier.
      *
-     * @see http://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-hash
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-hash
      */
     getBlockHash({ block }?: RPCOptions): Promise<string>;
     /**
@@ -40,7 +40,7 @@ export declare class RpcClient {
      *
      * @description Access the balance of a contract.
      *
-     * @see http://tezos.gitlab.io/master/api/rpc.html#get-block-id-context-contracts-contract-id-balance
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-contracts-contract-id-balance
      */
     getBalance(address: string, { block }?: RPCOptions): Promise<BalanceResponse>;
     /**
@@ -50,7 +50,7 @@ export declare class RpcClient {
      *
      * @description Access the data of the contract.
      *
-     * @see http://tezos.gitlab.io/master/api/rpc.html#get-block-id-context-contracts-contract-id-storage
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-contracts-contract-id-storage
      */
     getStorage(address: string, { block }?: {
         block: string;
@@ -62,7 +62,7 @@ export declare class RpcClient {
      *
      * @description Access the code and data of the contract.
      *
-     * @see http://tezos.gitlab.io/master/api/rpc.html#get-block-id-context-contracts-contract-id-script
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-contracts-contract-id-script
      */
     getScript(address: string, { block }?: {
         block: string;
@@ -74,7 +74,7 @@ export declare class RpcClient {
      *
      * @description Access the complete status of a contract.
      *
-     * @see http://tezos.gitlab.io/master/api/rpc.html#get-block-id-context-contracts-contract-id
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-contracts-contract-id
      */
     getContract(address: string, { block }?: {
         block: string;
@@ -86,7 +86,7 @@ export declare class RpcClient {
      *
      * @description Access the manager key of a contract.
      *
-     * @see http://tezos.gitlab.io/master/api/rpc.html#get-block-id-context-contracts-contract-id-manager-key
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-contracts-contract-id-manager-key
      */
     getManagerKey(address: string, { block }?: {
         block: string;
@@ -98,7 +98,7 @@ export declare class RpcClient {
      *
      * @description Access the delegate of a contract, if any.
      *
-     * @see http://tezos.gitlab.io/master/api/rpc.html#get-block-id-context-contracts-contract-id-delegate
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-contracts-contract-id-delegate
      */
     getDelegate(address: string, { block }?: {
         block: string;
@@ -110,7 +110,7 @@ export declare class RpcClient {
      *
      * @description Access the value associated with a key in the big map storage of the contract.
      *
-     * @see http://tezos.gitlab.io/master/api/rpc.html#post-block-id-context-contracts-contract-id-big-map-get
+     * @see https://tezos.gitlab.io/api/rpc.html#post-block-id-context-contracts-contract-id-big-map-get
      */
     getBigMapKey(address: string, key: BigMapKey, { block }?: {
         block: string;
@@ -123,7 +123,7 @@ export declare class RpcClient {
      *
      * @description Access the value associated with a key in a big map.
      *
-     * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-context-big-maps-big-map-id-script-expr
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-big-maps-big-map-id-script-expr
      */
     getBigMapExpr(id: string, expr: string, { block }?: {
         block: string;
@@ -135,7 +135,7 @@ export declare class RpcClient {
      *
      * @description Fetches information about a delegate from RPC.
      *
-     * @see http://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-context-delegates-pkh
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-delegates-pkh
      */
     getDelegates(address: string, { block }?: {
         block: string;
@@ -146,7 +146,7 @@ export declare class RpcClient {
      *
      * @description All constants
      *
-     * @see http://tezos.gitlab.io/master/api/rpc.html#get-block-id-context-constants
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-constants
      */
     getConstants({ block }?: RPCOptions): Promise<ConstantsResponse>;
     /**
@@ -155,7 +155,7 @@ export declare class RpcClient {
      *
      * @description All the information about a block
      *
-     * @see http://tezos.gitlab.io/master/api/rpc.html#get-block-id
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id
      */
     getBlock({ block }?: RPCOptions): Promise<BlockResponse>;
     /**
@@ -164,7 +164,7 @@ export declare class RpcClient {
      *
      * @description The whole block header
      *
-     * @see https://tezos.gitlab.io/tezos/api/rpc.html#get-block-id-header
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-header
      */
     getBlockHeader({ block }?: RPCOptions): Promise<BlockHeaderResponse>;
     /**
@@ -173,7 +173,7 @@ export declare class RpcClient {
      *
      * @description All the metadata associated to the block
      *
-     * @see https://tezos.gitlab.io/tezos/api/rpc.html#get-block-id-metadata
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-metadata
      */
     getBlockMetadata({ block }?: RPCOptions): Promise<BlockMetadata>;
     /**
@@ -183,7 +183,7 @@ export declare class RpcClient {
      *
      * @description Retrieves the list of delegates allowed to bake a block.
      *
-     * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-helpers-baking-rights
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-helpers-baking-rights
      */
     getBakingRights(args?: BakingRightsQueryArguments, { block }?: RPCOptions): Promise<BakingRightsResponse>;
     /**
@@ -193,7 +193,7 @@ export declare class RpcClient {
      *
      * @description Retrieves the list of delegates allowed to bake a block.
      *
-     * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-helpers-endorsing-rights
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-helpers-endorsing-rights
      */
     getEndorsingRights(args?: EndorsingRightsQueryArguments, { block }?: RPCOptions): Promise<EndorsingRightsResponse>;
     /**
@@ -201,7 +201,7 @@ export declare class RpcClient {
      *
      * @description Ballots casted so far during a voting period
      *
-     * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-votes-ballot-list
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-votes-ballot-list
      */
     getBallotList({ block }?: RPCOptions): Promise<BallotListResponse>;
     /**
@@ -210,7 +210,7 @@ export declare class RpcClient {
      *
      * @description Sum of ballots casted so far during a voting period.
      *
-     * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-votes-ballots
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-votes-ballots
      */
     getBallots({ block }?: RPCOptions): Promise<BallotsResponse>;
     /**
@@ -219,7 +219,7 @@ export declare class RpcClient {
      *
      * @description Current period kind.
      *
-     * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-votes-current-period-kind
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-votes-current-period-kind
      */
     getCurrentPeriodKind({ block }?: RPCOptions): Promise<PeriodKindResponse>;
     /**
@@ -228,7 +228,7 @@ export declare class RpcClient {
      *
      * @description Current proposal under evaluation.
      *
-     * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-votes-current-proposal
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-votes-current-proposal
      */
     getCurrentProposal({ block }?: RPCOptions): Promise<CurrentProposalResponse>;
     /**
@@ -237,7 +237,7 @@ export declare class RpcClient {
      *
      * @description Current expected quorum.
      *
-     * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-votes-current-quorum
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-votes-current-quorum
      */
     getCurrentQuorum({ block }?: RPCOptions): Promise<CurrentQuorumResponse>;
     /**
@@ -246,7 +246,7 @@ export declare class RpcClient {
      *
      * @description List of delegates with their voting weight, in number of rolls.
      *
-     * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-votes-listings
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-votes-listings
      */
     getVotesListings({ block }?: RPCOptions): Promise<VotesListingsResponse>;
     /**
@@ -255,7 +255,7 @@ export declare class RpcClient {
      *
      * @description List of proposals with number of supporters.
      *
-     * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-votes-proposals
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-votes-proposals
      */
     getProposals({ block }?: RPCOptions): Promise<ProposalsResponse>;
     /**
@@ -265,7 +265,7 @@ export declare class RpcClient {
      *
      * @description Forge an operation returning the unsigned bytes
      *
-     * @see https://tezos.gitlab.io/tezos/api/rpc.html#post-block-id-helpers-forge-operations
+     * @see https://tezos.gitlab.io/api/rpc.html#post-block-id-helpers-forge-operations
      */
     forgeOperations(data: ForgeOperationsParams, { block }?: RPCOptions): Promise<string>;
     /**
@@ -274,7 +274,7 @@ export declare class RpcClient {
      *
      * @description Inject an operation in node and broadcast it. Returns the ID of the operation. The `signedOperationContents` should be constructed using a contextual RPCs from the latest block and signed by the client. By default, the RPC will wait for the operation to be (pre-)validated before answering. See RPCs under /blocks/prevalidation for more details on the prevalidation context.
      *
-     * @see https://tezos.gitlab.io/tezos/api/rpc.html#post-injection-operation
+     * @see https://tezos.gitlab.io/api/rpc.html#post-injection-operation
      */
     injectOperation(signedOpBytes: string): Promise<OperationHash>;
     /**
@@ -284,7 +284,7 @@ export declare class RpcClient {
      *
      * @description Simulate the validation of an operation
      *
-     * @see https://tezos.gitlab.io/tezos/api/rpc.html#post-block-id-helpers-preapply-operations
+     * @see https://tezos.gitlab.io/api/rpc.html#post-block-id-helpers-preapply-operations
      */
     preapplyOperations(ops: PreapplyParams, { block }?: RPCOptions): Promise<PreapplyResponse[]>;
     /**
@@ -293,7 +293,7 @@ export declare class RpcClient {
      *
      * @description Return the list of entrypoints of the contract
      *
-     * @see http://tezos.gitlab.io/zeronet/api/rpc.html#get-block-id-context-contracts-contract-id-entrypoints
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-contracts-contract-id-entrypoints
      *
      * @version 005_PsBABY5H
      */
@@ -304,7 +304,7 @@ export declare class RpcClient {
      *
      * @description Run an operation without signature checks
      *
-     * @see https://tezos.gitlab.io/mainnet/api/rpc.html#post-block-id-helpers-scripts-run-operation
+     * @see https://tezos.gitlab.io/api/rpc.html#post-block-id-helpers-scripts-run-operation
      */
     runOperation(op: RPCRunOperationParam, { block }?: RPCOptions): Promise<PreapplyResponse>;
     getChainId(): Promise<string>;
@@ -317,7 +317,7 @@ export declare class RpcClient {
      *
      * @example packData({ data: { string: "test" }, type: { prim: "string" } })
      *
-     * @see http://tezos.gitlab.io/mainnet/api/rpc.html#post-block-id-helpers-scripts-pack-data
+     * @see https://tezos.gitlab.io/api/rpc.html#post-block-id-helpers-scripts-pack-data
      */
     packData(data: PackDataParams, { block }?: RPCOptions): Promise<{
         packed: string;

@@ -58,6 +58,15 @@ var Schema = /** @class */ (function () {
         var storage = this.root.Execute(val, semantics);
         return this.removeTopLevelAnnotation(storage);
     };
+    Schema.prototype.Typecheck = function (val) {
+        try {
+            this.root.EncodeObject(val);
+            return true;
+        }
+        catch (ex) {
+            return false;
+        }
+    };
     Schema.prototype.ExecuteOnBigMapDiff = function (diff, semantics) {
         if (!this.bigMap) {
             throw new Error('No big map schema');

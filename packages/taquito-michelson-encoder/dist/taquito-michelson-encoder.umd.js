@@ -1,9 +1,10 @@
 (function (global, factory) {
-    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('bignumber.js'), require('@taquito/utils')) :
-    typeof define === 'function' && define.amd ? define(['exports', 'bignumber.js', '@taquito/utils'], factory) :
-    (global = global || self, factory(global.taquitoMichelsonEncoder = {}, global.BigNumber, global.utils));
-}(this, (function (exports, BigNumber, utils) { 'use strict';
+    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('fast-json-stable-stringify'), require('bignumber.js'), require('@taquito/utils')) :
+    typeof define === 'function' && define.amd ? define(['exports', 'fast-json-stable-stringify', 'bignumber.js', '@taquito/utils'], factory) :
+    (global = global || self, factory(global.taquitoMichelsonEncoder = {}, global.stringify, global.BigNumber, global.utils));
+}(this, (function (exports, stringify, BigNumber, utils) { 'use strict';
 
+    stringify = stringify && stringify.hasOwnProperty('default') ? stringify['default'] : stringify;
     BigNumber = BigNumber && BigNumber.hasOwnProperty('default') ? BigNumber['default'] : BigNumber;
 
     /*! *****************************************************************************
@@ -46,12 +47,66 @@
         return __assign.apply(this, arguments);
     };
 
-    function __spreadArrays() {
-        for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
-        for (var r = Array(s), k = 0, i = 0; i < il; i++)
-            for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
-                r[k] = a[j];
-        return r;
+    function __generator(thisArg, body) {
+        var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
+        return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+        function verb(n) { return function (v) { return step([n, v]); }; }
+        function step(op) {
+            if (f) throw new TypeError("Generator is already executing.");
+            while (_) try {
+                if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+                if (y = 0, t) op = [op[0] & 2, t.value];
+                switch (op[0]) {
+                    case 0: case 1: t = op; break;
+                    case 4: _.label++; return { value: op[1], done: false };
+                    case 5: _.label++; y = op[1]; op = [0]; continue;
+                    case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                    default:
+                        if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                        if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                        if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                        if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                        if (t[2]) _.ops.pop();
+                        _.trys.pop(); continue;
+                }
+                op = body.call(thisArg, _);
+            } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+            if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+        }
+    }
+
+    function __values(o) {
+        var m = typeof Symbol === "function" && o[Symbol.iterator], i = 0;
+        if (m) return m.call(o);
+        return {
+            next: function () {
+                if (o && i >= o.length) o = void 0;
+                return { value: o && o[i++], done: !o };
+            }
+        };
+    }
+
+    function __read(o, n) {
+        var m = typeof Symbol === "function" && o[Symbol.iterator];
+        if (!m) return o;
+        var i = m.call(o), r, ar = [], e;
+        try {
+            while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
+        }
+        catch (error) { e = { error: error }; }
+        finally {
+            try {
+                if (r && !r.done && (m = i["return"])) m.call(i);
+            }
+            finally { if (e) throw e.error; }
+        }
+        return ar;
+    }
+
+    function __spread() {
+        for (var ar = [], i = 0; i < arguments.length; i++)
+            ar = ar.concat(__read(arguments[i]));
+        return ar;
     }
 
     var TokenValidationError = /** @class */ (function () {
@@ -107,10 +162,252 @@
             return _super !== null && _super.apply(this, arguments) || this;
         }
         ComparableToken.prototype.compare = function (o1, o2) {
+            if (o1 === o2) {
+                return 0;
+            }
             return o1 < o2 ? -1 : 1;
         };
         return ComparableToken;
     }(Token));
+
+    var isMapType = function (value) {
+        return 'args' in value && Array.isArray(value.args) && value.args.length === 2;
+    };
+    var MapTypecheckError = /** @class */ (function () {
+        function MapTypecheckError(value, type, errorType) {
+            this.value = value;
+            this.type = type;
+            this.name = 'MapTypecheckError';
+            this.message = errorType + " not compliant with underlying michelson type";
+        }
+        return MapTypecheckError;
+    }());
+    /**
+     * @description Michelson Map is an abstraction over the michelson native map. It supports complex Pair as key
+     */
+    var MichelsonMap = /** @class */ (function () {
+        /**
+         * @param mapType If specified key and value will be type-checked before being added to the map
+         *
+         * @example new MichelsonMap({ prim: "map", args: [{prim: "string"}, {prim: "int"}]})
+         */
+        function MichelsonMap(mapType) {
+            this.valueMap = new Map();
+            this.keyMap = new Map();
+            if (mapType) {
+                this.setType(mapType);
+            }
+        }
+        MichelsonMap.prototype.setType = function (mapType) {
+            if (!isMapType(mapType)) {
+                throw new Error('mapType is not a valid michelson map type');
+            }
+            this.keySchema = new Schema(mapType.args[0]);
+            this.valueSchema = new Schema(mapType.args[1]);
+        };
+        MichelsonMap.prototype.removeType = function () {
+            this.keySchema = undefined;
+            this.valueSchema = undefined;
+        };
+        MichelsonMap.fromLiteral = function (obj, mapType) {
+            var map = new MichelsonMap(mapType);
+            Object.keys(obj).forEach(function (key) {
+                map.set(key, obj[key]);
+            });
+            return map;
+        };
+        MichelsonMap.prototype.typecheckKey = function (key) {
+            if (this.keySchema) {
+                return this.keySchema.Typecheck(key);
+            }
+            return true;
+        };
+        MichelsonMap.prototype.typecheckValue = function (value) {
+            if (this.valueSchema) {
+                return this.valueSchema.Typecheck(value);
+            }
+            return true;
+        };
+        MichelsonMap.prototype.assertTypecheckValue = function (value) {
+            if (!this.typecheckValue(value)) {
+                throw new MapTypecheckError(value, this.valueSchema, 'value');
+            }
+        };
+        MichelsonMap.prototype.assertTypecheckKey = function (key) {
+            if (!this.typecheckKey(key)) {
+                throw new MapTypecheckError(key, this.keySchema, 'key');
+            }
+        };
+        MichelsonMap.prototype.serializeDeterministically = function (key) {
+            return stringify(key);
+        };
+        MichelsonMap.prototype.keys = function () {
+            var _a, _b, _c, key, e_1_1;
+            var e_1, _d;
+            return __generator(this, function (_e) {
+                switch (_e.label) {
+                    case 0:
+                        _e.trys.push([0, 5, 6, 7]);
+                        _a = __values(this.entries()), _b = _a.next();
+                        _e.label = 1;
+                    case 1:
+                        if (!!_b.done) return [3 /*break*/, 4];
+                        _c = __read(_b.value, 1), key = _c[0];
+                        return [4 /*yield*/, key];
+                    case 2:
+                        _e.sent();
+                        _e.label = 3;
+                    case 3:
+                        _b = _a.next();
+                        return [3 /*break*/, 1];
+                    case 4: return [3 /*break*/, 7];
+                    case 5:
+                        e_1_1 = _e.sent();
+                        e_1 = { error: e_1_1 };
+                        return [3 /*break*/, 7];
+                    case 6:
+                        try {
+                            if (_b && !_b.done && (_d = _a.return)) _d.call(_a);
+                        }
+                        finally { if (e_1) throw e_1.error; }
+                        return [7 /*endfinally*/];
+                    case 7: return [2 /*return*/];
+                }
+            });
+        };
+        MichelsonMap.prototype.values = function () {
+            var _a, _b, _c, value, e_2_1;
+            var e_2, _d;
+            return __generator(this, function (_e) {
+                switch (_e.label) {
+                    case 0:
+                        _e.trys.push([0, 5, 6, 7]);
+                        _a = __values(this.entries()), _b = _a.next();
+                        _e.label = 1;
+                    case 1:
+                        if (!!_b.done) return [3 /*break*/, 4];
+                        _c = __read(_b.value, 2), value = _c[1];
+                        return [4 /*yield*/, value];
+                    case 2:
+                        _e.sent();
+                        _e.label = 3;
+                    case 3:
+                        _b = _a.next();
+                        return [3 /*break*/, 1];
+                    case 4: return [3 /*break*/, 7];
+                    case 5:
+                        e_2_1 = _e.sent();
+                        e_2 = { error: e_2_1 };
+                        return [3 /*break*/, 7];
+                    case 6:
+                        try {
+                            if (_b && !_b.done && (_d = _a.return)) _d.call(_a);
+                        }
+                        finally { if (e_2) throw e_2.error; }
+                        return [7 /*endfinally*/];
+                    case 7: return [2 /*return*/];
+                }
+            });
+        };
+        MichelsonMap.prototype.entries = function () {
+            var _a, _b, key, e_3_1;
+            var e_3, _c;
+            return __generator(this, function (_d) {
+                switch (_d.label) {
+                    case 0:
+                        _d.trys.push([0, 5, 6, 7]);
+                        _a = __values(this.valueMap.keys()), _b = _a.next();
+                        _d.label = 1;
+                    case 1:
+                        if (!!_b.done) return [3 /*break*/, 4];
+                        key = _b.value;
+                        return [4 /*yield*/, [this.keyMap.get(key), this.valueMap.get(key)]];
+                    case 2:
+                        _d.sent();
+                        _d.label = 3;
+                    case 3:
+                        _b = _a.next();
+                        return [3 /*break*/, 1];
+                    case 4: return [3 /*break*/, 7];
+                    case 5:
+                        e_3_1 = _d.sent();
+                        e_3 = { error: e_3_1 };
+                        return [3 /*break*/, 7];
+                    case 6:
+                        try {
+                            if (_b && !_b.done && (_c = _a.return)) _c.call(_a);
+                        }
+                        finally { if (e_3) throw e_3.error; }
+                        return [7 /*endfinally*/];
+                    case 7: return [2 /*return*/];
+                }
+            });
+        };
+        MichelsonMap.prototype.get = function (key) {
+            this.assertTypecheckKey(key);
+            var strKey = this.serializeDeterministically(key);
+            return this.valueMap.get(strKey);
+        };
+        /**
+         *
+         * @description Set a key and a value in the MichelsonMap. If the key already exists, override the current value.
+         *
+         * @example map.set("myKey", "myValue") // Using a string as key
+         *
+         * @example map.set({0: "test", 1: "test1"}, "myValue") // Using a pair as key
+         *
+         * @warn The same key can be represented in multiple ways, depending on the type of the key. This duplicate key situation will cause a runtime error (duplicate key) when sending the map data to the Tezos RPC node.
+         *
+         * For example, consider a contract with a map whose key is of type boolean.  If you set the following values in MichelsonMap: map.set(false, "myValue") and map.set(null, "myValue").
+         *
+         * You will get two unique entries in the MichelsonMap. These values will both be evaluated as falsy by the MichelsonEncoder and ultimately rejected by the Tezos RPC.
+         */
+        MichelsonMap.prototype.set = function (key, value) {
+            this.assertTypecheckKey(key);
+            this.assertTypecheckValue(value);
+            var strKey = this.serializeDeterministically(key);
+            this.keyMap.set(strKey, key);
+            this.valueMap.set(strKey, value);
+        };
+        MichelsonMap.prototype.delete = function (key) {
+            this.assertTypecheckKey(key);
+            this.keyMap.delete(this.serializeDeterministically(key));
+            this.valueMap.delete(this.serializeDeterministically(key));
+        };
+        MichelsonMap.prototype.has = function (key) {
+            this.assertTypecheckKey(key);
+            var strKey = this.serializeDeterministically(key);
+            return this.keyMap.has(strKey) && this.valueMap.has(strKey);
+        };
+        MichelsonMap.prototype.clear = function () {
+            this.keyMap.clear();
+            this.valueMap.clear();
+        };
+        Object.defineProperty(MichelsonMap.prototype, "size", {
+            get: function () {
+                return this.keyMap.size;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        MichelsonMap.prototype.forEach = function (cb) {
+            var e_4, _a;
+            try {
+                for (var _b = __values(this.entries()), _c = _b.next(); !_c.done; _c = _b.next()) {
+                    var _d = __read(_c.value, 2), key = _d[0], value = _d[1];
+                    cb(value, key, this);
+                }
+            }
+            catch (e_4_1) { e_4 = { error: e_4_1 }; }
+            finally {
+                try {
+                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+                }
+                finally { if (e_4) throw e_4.error; }
+            }
+        };
+        return MichelsonMap;
+    }());
 
     var BigMapValidationError = /** @class */ (function (_super) {
         __extends(BigMapValidationError, _super);
@@ -153,10 +450,10 @@
                 _a;
         };
         BigMapToken.prototype.isValid = function (value) {
-            if (typeof value === 'object') {
+            if (value instanceof MichelsonMap) {
                 return null;
             }
-            return new BigMapValidationError(value, this, 'Value must be an object');
+            return new BigMapValidationError(value, this, 'Value must be a MichelsonMap');
         };
         BigMapToken.prototype.Encode = function (args) {
             var _this = this;
@@ -165,12 +462,12 @@
             if (err) {
                 throw err;
             }
-            return Object.keys(val)
-                .sort(this.KeySchema.compare)
+            return Array.from(val.keys())
+                .sort(function (a, b) { return _this.KeySchema.compare(a, b); })
                 .map(function (key) {
                 return {
                     prim: 'Elt',
-                    args: [_this.KeySchema.Encode([key]), _this.ValueSchema.EncodeObject(val[key])],
+                    args: [_this.KeySchema.EncodeObject(key), _this.ValueSchema.EncodeObject(val.get(key))],
                 };
             });
         };
@@ -181,12 +478,12 @@
             if (err) {
                 throw err;
             }
-            return Object.keys(val)
-                .sort(this.KeySchema.compare)
+            return Array.from(val.keys())
+                .sort(function (a, b) { return _this.KeySchema.compare(a, b); })
                 .map(function (key) {
                 return {
                     prim: 'Elt',
-                    args: [_this.KeySchema.EncodeObject(key), _this.ValueSchema.EncodeObject(val[key])],
+                    args: [_this.KeySchema.EncodeObject(key), _this.ValueSchema.EncodeObject(val.get(key))],
                 };
             });
         };
@@ -198,10 +495,11 @@
             if (Array.isArray(val)) {
                 // Athens is returning an empty array for big map in storage
                 // Internal: In taquito v5 it is still used to decode big map diff (as if they were a regular map)
-                return val.reduce(function (prev, current) {
-                    var _a;
-                    return __assign(__assign({}, prev), (_a = {}, _a[_this.KeySchema.ToKey(current.args[0])] = _this.ValueSchema.Execute(current.args[1]), _a));
-                }, {});
+                var map_1 = new MichelsonMap(this.val);
+                val.forEach(function (current) {
+                    map_1.set(_this.KeySchema.ToKey(current.args[0]), _this.ValueSchema.Execute(current.args[1]));
+                });
+                return map_1;
             }
             else if ('int' in val) {
                 // Babylon is returning an int with the big map id in contract storage
@@ -258,6 +556,7 @@
             }
         };
         OrToken.prototype.ExtractSignature = function () {
+            var e_1, _a, e_2, _b;
             var leftToken = this.createToken(this.val.args[0], this.idx);
             var keyCount = 1;
             if (leftToken instanceof OrToken) {
@@ -266,21 +565,39 @@
             var rightToken = this.createToken(this.val.args[1], this.idx + keyCount);
             var newSig = [];
             if (leftToken instanceof OrToken) {
-                newSig.push.apply(newSig, leftToken.ExtractSignature());
+                newSig.push.apply(newSig, __spread(leftToken.ExtractSignature()));
             }
             else {
-                for (var _i = 0, _a = leftToken.ExtractSignature(); _i < _a.length; _i++) {
-                    var sig = _a[_i];
-                    newSig.push(__spreadArrays([leftToken.annot()], sig));
+                try {
+                    for (var _c = __values(leftToken.ExtractSignature()), _d = _c.next(); !_d.done; _d = _c.next()) {
+                        var sig = _d.value;
+                        newSig.push(__spread([leftToken.annot()], sig));
+                    }
+                }
+                catch (e_1_1) { e_1 = { error: e_1_1 }; }
+                finally {
+                    try {
+                        if (_d && !_d.done && (_a = _c.return)) _a.call(_c);
+                    }
+                    finally { if (e_1) throw e_1.error; }
                 }
             }
             if (rightToken instanceof OrToken) {
-                newSig.push.apply(newSig, rightToken.ExtractSignature());
+                newSig.push.apply(newSig, __spread(rightToken.ExtractSignature()));
             }
             else {
-                for (var _b = 0, _c = rightToken.ExtractSignature(); _b < _c.length; _b++) {
-                    var sig = _c[_b];
-                    newSig.push(__spreadArrays([rightToken.annot()], sig));
+                try {
+                    for (var _e = __values(rightToken.ExtractSignature()), _f = _e.next(); !_f.done; _f = _e.next()) {
+                        var sig = _f.value;
+                        newSig.push(__spread([rightToken.annot()], sig));
+                    }
+                }
+                catch (e_2_1) { e_2 = { error: e_2_1 }; }
+                finally {
+                    try {
+                        if (_f && !_f.done && (_b = _e.return)) _b.call(_e);
+                    }
+                    finally { if (e_2) throw e_2.error; }
                 }
             }
             return newSig;
@@ -387,6 +704,7 @@
             };
         };
         PairToken.prototype.ExtractSignature = function () {
+            var e_1, _a, e_2, _b;
             var leftToken = this.createToken(this.val.args[0], this.idx);
             var keyCount = 1;
             if (leftToken instanceof OrToken) {
@@ -394,12 +712,30 @@
             }
             var rightToken = this.createToken(this.val.args[1], this.idx + keyCount);
             var newSig = [];
-            for (var _i = 0, _a = leftToken.ExtractSignature(); _i < _a.length; _i++) {
-                var leftSig = _a[_i];
-                for (var _b = 0, _c = rightToken.ExtractSignature(); _b < _c.length; _b++) {
-                    var rightSig = _c[_b];
-                    newSig.push(__spreadArrays(leftSig, rightSig));
+            try {
+                for (var _c = __values(leftToken.ExtractSignature()), _d = _c.next(); !_d.done; _d = _c.next()) {
+                    var leftSig = _d.value;
+                    try {
+                        for (var _e = (e_2 = void 0, __values(rightToken.ExtractSignature())), _f = _e.next(); !_f.done; _f = _e.next()) {
+                            var rightSig = _f.value;
+                            newSig.push(__spread(leftSig, rightSig));
+                        }
+                    }
+                    catch (e_2_1) { e_2 = { error: e_2_1 }; }
+                    finally {
+                        try {
+                            if (_f && !_f.done && (_b = _e.return)) _b.call(_e);
+                        }
+                        finally { if (e_2) throw e_2.error; }
+                    }
                 }
+            }
+            catch (e_1_1) { e_1 = { error: e_1_1 }; }
+            finally {
+                try {
+                    if (_d && !_d.done && (_a = _c.return)) _a.call(_c);
+                }
+                finally { if (e_1) throw e_1.error; }
             }
             return newSig;
         };
@@ -408,6 +744,9 @@
                 key: this.EncodeObject(val),
                 type: this.typeWithoutAnnotations(),
             };
+        };
+        PairToken.prototype.ToKey = function (val) {
+            return this.Execute(val);
         };
         PairToken.prototype.EncodeObject = function (args) {
             var leftToken = this.createToken(this.val.args[0], this.idx);
@@ -464,9 +803,33 @@
         PairToken.prototype.ExtractSchema = function () {
             return this.traversal(function (leftToken) { return leftToken.ExtractSchema(); }, function (rightToken) { return rightToken.ExtractSchema(); });
         };
+        PairToken.prototype.compare = function (val1, val2) {
+            var leftToken = this.createToken(this.val.args[0], this.idx);
+            var keyCount = 1;
+            if (leftToken instanceof PairToken) {
+                keyCount = Object.keys(leftToken.ExtractSchema()).length;
+            }
+            var rightToken = this.createToken(this.val.args[1], this.idx + keyCount);
+            var getValue = function (token, args) {
+                if (token instanceof PairToken && !token.hasAnnotations()) {
+                    return args;
+                }
+                else {
+                    return args[token.annot()];
+                }
+            };
+            if (leftToken instanceof ComparableToken && rightToken instanceof ComparableToken) {
+                var result = leftToken.compare(getValue(leftToken, val1), getValue(leftToken, val2));
+                if (result === 0) {
+                    return rightToken.compare(getValue(rightToken, val1), getValue(rightToken, val2));
+                }
+                return result;
+            }
+            throw new Error('Not a comparable pair');
+        };
         PairToken.prim = 'pair';
         return PairToken;
-    }(Token));
+    }(ComparableToken));
 
     var NatValidationError = /** @class */ (function (_super) {
         __extends(NatValidationError, _super);
@@ -694,17 +1057,18 @@
             configurable: true
         });
         MapToken.prototype.isValid = function (value) {
-            if (typeof value === 'object') {
+            if (value instanceof MichelsonMap) {
                 return null;
             }
-            return new MapValidationError(value, this, 'Value must be an object');
+            return new MapValidationError(value, this, 'Value must be a MichelsonMap');
         };
         MapToken.prototype.Execute = function (val, semantics) {
             var _this = this;
-            return val.reduce(function (prev, current) {
-                var _a;
-                return __assign(__assign({}, prev), (_a = {}, _a[_this.KeySchema.ToKey(current.args[0])] = _this.ValueSchema.Execute(current.args[1], semantics), _a));
-            }, {});
+            var map = new MichelsonMap(this.val);
+            val.forEach(function (current) {
+                map.set(_this.KeySchema.ToKey(current.args[0]), _this.ValueSchema.Execute(current.args[1], semantics));
+            });
+            return map;
         };
         MapToken.prototype.Encode = function (args) {
             var _this = this;
@@ -713,12 +1077,12 @@
             if (err) {
                 throw err;
             }
-            return Object.keys(val)
-                .sort(this.KeySchema.compare)
+            return Array.from(val.keys())
+                .sort(function (a, b) { return _this.KeySchema.compare(a, b); })
                 .map(function (key) {
                 return {
                     prim: 'Elt',
-                    args: [_this.KeySchema.Encode([key]), _this.ValueSchema.EncodeObject(val[key])],
+                    args: [_this.KeySchema.EncodeObject(key), _this.ValueSchema.EncodeObject(val.get(key))],
                 };
             });
         };
@@ -729,20 +1093,22 @@
             if (err) {
                 throw err;
             }
-            return Object.keys(val)
-                .sort(this.KeySchema.compare)
+            return Array.from(val.keys())
+                .sort(function (a, b) { return _this.KeySchema.compare(a, b); })
                 .map(function (key) {
                 return {
                     prim: 'Elt',
-                    args: [_this.KeySchema.EncodeObject(key), _this.ValueSchema.EncodeObject(val[key])],
+                    args: [_this.KeySchema.EncodeObject(key), _this.ValueSchema.EncodeObject(val.get(key))],
                 };
             });
         };
         MapToken.prototype.ExtractSchema = function () {
-            var _a;
-            return _a = {},
-                _a[this.KeySchema.ExtractSchema()] = this.ValueSchema.ExtractSchema(),
-                _a;
+            return {
+                map: {
+                    key: this.KeySchema.ExtractSchema(),
+                    value: this.ValueSchema.ExtractSchema(),
+                },
+            };
         };
         MapToken.prim = 'map';
         return MapToken;
@@ -770,9 +1136,29 @@
         BoolToken.prototype.ExtractSchema = function () {
             return BoolToken.prim;
         };
+        BoolToken.prototype.ToBigMapKey = function (val) {
+            return {
+                key: this.EncodeObject(val),
+                type: { prim: BoolToken.prim },
+            };
+        };
+        BoolToken.prototype.ToKey = function (val) {
+            return this.EncodeObject(val);
+        };
+        BoolToken.prototype.compare = function (val1, val2) {
+            if ((val1 && val2) || (!val1 && !val2)) {
+                return 0;
+            }
+            else if (val1) {
+                return 1;
+            }
+            else {
+                return -1;
+            }
+        };
         BoolToken.prim = 'bool';
         return BoolToken;
-    }(Token));
+    }(ComparableToken));
 
     var ContractValidationError = /** @class */ (function (_super) {
         __extends(ContractValidationError, _super);
@@ -863,7 +1249,7 @@
             }
             var schema = this.createToken(this.val.args[0], 0);
             return val.reduce(function (prev, current) {
-                return __spreadArrays(prev, [schema.EncodeObject(current)]);
+                return __spread(prev, [schema.EncodeObject(current)]);
             }, []);
         };
         ListToken.prototype.Execute = function (val, semantics) {
@@ -873,7 +1259,7 @@
                 throw err;
             }
             return val.reduce(function (prev, current) {
-                return __spreadArrays(prev, [schema.Execute(current, semantics)]);
+                return __spread(prev, [schema.Execute(current, semantics)]);
             }, []);
         };
         ListToken.prototype.EncodeObject = function (args) {
@@ -883,7 +1269,7 @@
                 throw err;
             }
             return args.reduce(function (prev, current) {
-                return __spreadArrays(prev, [schema.EncodeObject(current)]);
+                return __spread(prev, [schema.EncodeObject(current)]);
             }, []);
         };
         ListToken.prototype.ExtractSchema = function () {
@@ -1072,7 +1458,7 @@
         };
         OptionToken.prototype.ExtractSignature = function () {
             var schema = this.createToken(this.val.args[0], 0);
-            return __spreadArrays(schema.ExtractSignature(), [[]]);
+            return __spread(schema.ExtractSignature(), [[]]);
         };
         OptionToken.prim = 'option';
         return OptionToken;
@@ -1487,14 +1873,16 @@
             if (err) {
                 throw err;
             }
-            return val.sort(this.KeySchema.compare).reduce(function (prev, current) {
-                return __spreadArrays(prev, [_this.KeySchema.EncodeObject(current)]);
+            return val
+                .sort(function (a, b) { return _this.KeySchema.compare(a, b); })
+                .reduce(function (prev, current) {
+                return __spread(prev, [_this.KeySchema.EncodeObject(current)]);
             }, []);
         };
         SetToken.prototype.Execute = function (val, semantics) {
             var _this = this;
             return val.reduce(function (prev, current) {
-                return __spreadArrays(prev, [_this.KeySchema.Execute(current, semantics)]);
+                return __spread(prev, [_this.KeySchema.Execute(current, semantics)]);
             }, []);
         };
         SetToken.prototype.EncodeObject = function (args) {
@@ -1503,8 +1891,10 @@
             if (err) {
                 throw err;
             }
-            return args.sort(this.KeySchema.compare).reduce(function (prev, current) {
-                return __spreadArrays(prev, [_this.KeySchema.EncodeObject(current)]);
+            return args
+                .sort(function (a, b) { return _this.KeySchema.compare(a, b); })
+                .reduce(function (prev, current) {
+                return __spread(prev, [_this.KeySchema.EncodeObject(current)]);
             }, []);
         };
         SetToken.prototype.ExtractSchema = function () {
@@ -1660,6 +2050,15 @@
             var storage = this.root.Execute(val, semantics);
             return this.removeTopLevelAnnotation(storage);
         };
+        Schema.prototype.Typecheck = function (val) {
+            try {
+                this.root.EncodeObject(val);
+                return true;
+            }
+            catch (ex) {
+                return false;
+            }
+        };
         Schema.prototype.ExecuteOnBigMapDiff = function (diff, semantics) {
             if (!this.bigMap) {
                 throw new Error('No big map schema');
@@ -1796,7 +2195,9 @@
     exports.KeyHashValidationError = KeyHashValidationError;
     exports.KeyValidationError = KeyValidationError;
     exports.ListValidationError = ListValidationError;
+    exports.MapTypecheckError = MapTypecheckError;
     exports.MapValidationError = MapValidationError;
+    exports.MichelsonMap = MichelsonMap;
     exports.MutezValidationError = MutezValidationError;
     exports.NatValidationError = NatValidationError;
     exports.ParameterSchema = ParameterSchema;

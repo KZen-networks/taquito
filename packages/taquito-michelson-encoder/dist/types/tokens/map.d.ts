@@ -28,6 +28,9 @@ export declare class MapToken extends Token {
     Encode(args: any[]): any;
     EncodeObject(args: any): any;
     ExtractSchema(): {
-        [x: number]: any;
+        map: {
+            key: any;
+            value: any;
+        };
     };
 }

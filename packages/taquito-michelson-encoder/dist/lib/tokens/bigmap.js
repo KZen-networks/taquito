@@ -12,19 +12,9 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-var __assign = (this && this.__assign) || function () {
-    __assign = Object.assign || function(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-                t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign.apply(this, arguments);
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 var token_1 = require("./token");
+var michelson_map_1 = require("../michelson-map");
 var BigMapValidationError = /** @class */ (function (_super) {
     __extends(BigMapValidationError, _super);
     function BigMapValidationError(value, token, message) {
@@ -67,10 +57,10 @@ var BigMapToken = /** @class */ (function (_super) {
             _a;
     };
     BigMapToken.prototype.isValid = function (value) {
-        if (typeof value === 'object') {
+        if (value instanceof michelson_map_1.MichelsonMap) {
             return null;
         }
-        return new BigMapValidationError(value, this, 'Value must be an object');
+        return new BigMapValidationError(value, this, 'Value must be a MichelsonMap');
     };
     BigMapToken.prototype.Encode = function (args) {
         var _this = this;
@@ -79,12 +69,12 @@ var BigMapToken = /** @class */ (function (_super) {
         if (err) {
             throw err;
         }
-        return Object.keys(val)
-            .sort(this.KeySchema.compare)
+        return Array.from(val.keys())
+            .sort(function (a, b) { return _this.KeySchema.compare(a, b); })
             .map(function (key) {
             return {
                 prim: 'Elt',
-                args: [_this.KeySchema.Encode([key]), _this.ValueSchema.EncodeObject(val[key])],
+                args: [_this.KeySchema.EncodeObject(key), _this.ValueSchema.EncodeObject(val.get(key))],
             };
         });
     };
@@ -95,12 +85,12 @@ var BigMapToken = /** @class */ (function (_super) {
         if (err) {
             throw err;
         }
-        return Object.keys(val)
-            .sort(this.KeySchema.compare)
+        return Array.from(val.keys())
+            .sort(function (a, b) { return _this.KeySchema.compare(a, b); })
             .map(function (key) {
             return {
                 prim: 'Elt',
-                args: [_this.KeySchema.EncodeObject(key), _this.ValueSchema.EncodeObject(val[key])],
+                args: [_this.KeySchema.EncodeObject(key), _this.ValueSchema.EncodeObject(val.get(key))],
             };
         });
     };
@@ -112,10 +102,11 @@ var BigMapToken = /** @class */ (function (_super) {
         if (Array.isArray(val)) {
             // Athens is returning an empty array for big map in storage
             // Internal: In taquito v5 it is still used to decode big map diff (as if they were a regular map)
-            return val.reduce(function (prev, current) {
-                var _a;
-                return __assign(__assign({}, prev), (_a = {}, _a[_this.KeySchema.ToKey(current.args[0])] = _this.ValueSchema.Execute(current.args[1]), _a));
-            }, {});
+            var map_1 = new michelson_map_1.MichelsonMap(this.val);
+            val.forEach(function (current) {
+                map_1.set(_this.KeySchema.ToKey(current.args[0]), _this.ValueSchema.Execute(current.args[1]));
+            });
+            return map_1;
         }
         else if ('int' in val) {
             // Babylon is returning an int with the big map id in contract storage

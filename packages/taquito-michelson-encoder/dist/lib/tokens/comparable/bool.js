@@ -36,8 +36,28 @@ var BoolToken = /** @class */ (function (_super) {
     BoolToken.prototype.ExtractSchema = function () {
         return BoolToken.prim;
     };
+    BoolToken.prototype.ToBigMapKey = function (val) {
+        return {
+            key: this.EncodeObject(val),
+            type: { prim: BoolToken.prim },
+        };
+    };
+    BoolToken.prototype.ToKey = function (val) {
+        return this.EncodeObject(val);
+    };
+    BoolToken.prototype.compare = function (val1, val2) {
+        if ((val1 && val2) || (!val1 && !val2)) {
+            return 0;
+        }
+        else if (val1) {
+            return 1;
+        }
+        else {
+            return -1;
+        }
+    };
     BoolToken.prim = 'bool';
     return BoolToken;
-}(token_1.Token));
+}(token_1.ComparableToken));
 exports.BoolToken = BoolToken;
 //# sourceMappingURL=bool.js.map
