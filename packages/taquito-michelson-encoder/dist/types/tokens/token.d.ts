@@ -45,6 +45,6 @@ export declare abstract class ComparableToken extends Token {
             prim: string;
         };
     };
-    abstract ToKey(val: string): string;
-    compare(o1: string, o2: string): 1 | -1;
+    abstract ToKey(val: string): any;
+    compare(o1: string, o2: string): number;
 }

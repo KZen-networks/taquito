@@ -68,6 +68,9 @@ var ComparableToken = /** @class */ (function (_super) {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     ComparableToken.prototype.compare = function (o1, o2) {
+        if (o1 === o2) {
+            return 0;
+        }
         return o1 < o2 ? -1 : 1;
     };
     return ComparableToken;

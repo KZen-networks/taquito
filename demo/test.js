@@ -13,7 +13,8 @@ const revealedAccount2 = {
   privateKey: 'spsk3B46kboUhTf2dRpCaUNZGtMoHaR2AxQ8JjfbpCZNyA712uQgDN'
 };
 
-const delegateAddress = 'tz1VxS7ff4YnZRs8b4mMP4WaMVpoQjuo1rjf';
+// const delegateAddress = 'tz1PirboZKFVqkfE45hVLpkpXaZtLk3mqC17';  // Bablyonnet
+const delegateAddress = 'tz1VxS7ff4YnZRs8b4mMP4WaMVpoQjuo1rjf';  // Carthagenet
 
 const MUTEZ_IN_TZ = 1000000;
 
@@ -265,6 +266,59 @@ describe('Tezos API tests', () => {
     assert.strictEqual(op.results[1].gas_limit.toString().substr(op.results[1].gas_limit.length - 3, 3), trackingId.toString());
 
     await op.confirmation();
+  }).timeout(200000);
+
+  it('transfer from a delegated address', async () => {
+    // 1. send to an unrevealed account
+    const newImplicitAccount = await generateNewAccount();
+
+    let op = await transfer(revealedAccount1.privateKey, newImplicitAccount.address, 0.1, network);
+    await op.confirmation();
+
+    const balanceAfter = await getBalance(newImplicitAccount.address, network);
+    assert.strictEqual(balanceAfter.toString(), (0.1 * MUTEZ_IN_TZ).toString());
+
+    // 2. delegate from the unrevealed account
+    op = await delegate(newImplicitAccount.privateKey, delegateAddress, network, 135);
+    await op.confirmation();
+
+    // 3. transfer from the delegated address
+    const revealedBalanceBefore = await getBalance(revealedAccount2.address, network);
+    op = await transfer(newImplicitAccount.privateKey, revealedAccount2.address, 0.01, network);
+    assert.strictEqual(op.results.length, 1);  // without reveal
+    assert.strictEqual(op.results[0].kind, 'transaction');
+    assert.strictEqual(op.results[0].storage_limit, '0');
+
+    await op.confirmation();
+
+    const revealedBalanceAfter = await getBalance(revealedAccount2.address, network);
+    assert.strictEqual(revealedBalanceAfter.toString(), revealedBalanceBefore.plus(0.01 * MUTEZ_IN_TZ).toString());
+  }).timeout(200000);
+
+  it('transfer all from a delegated address', async () => {
+    // 1. send to an unrevealed account
+    const newImplicitAccount = await generateNewAccount();
+
+    let op = await transfer(revealedAccount1.privateKey, newImplicitAccount.address, 0.1, network);
+    await op.confirmation();
+
+    const balanceAfter = await getBalance(newImplicitAccount.address, network);
+    assert.strictEqual(balanceAfter.toString(), (0.1 * MUTEZ_IN_TZ).toString());
+
+    // 2. delegate from the unrevealed account
+    op = await delegate(newImplicitAccount.privateKey, delegateAddress, network, 135);
+    await op.confirmation();
+
+    // 3. transfer from the delegated address
+    op = await transferAll(newImplicitAccount.privateKey, revealedAccount2.address, network);
+    assert.strictEqual(op.results.length, 1);  // without reveal
+    assert.strictEqual(op.results[0].kind, 'transaction');
+    assert.strictEqual(op.results[0].storage_limit, '0');
+
+    await op.confirmation();
+
+    const delegatedBalanceAfter = await getBalance(newImplicitAccount.address, network);
+    assert.strictEqual(delegatedBalanceAfter.toString(), '1');  // 1 Mutez must be left on delegated account https://tezos.stackexchange.com/questions/2118/assert-failure-src-proto-005-psbabym1-lib-protocol-contract-storage-ml55516
   }).timeout(200000);
 
   it('receive, send, and stake', async () => {

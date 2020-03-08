@@ -16,8 +16,9 @@ const { prefix, b58cdecode } = require('../packages/taquito-utils/dist/lib/taqui
 const CLIENT_DB_PATH = path.join(__dirname, 'client-db');
 
 const rpcUrl = {
-  carthagenet: 'https://carthagenet.smartpy.io/',
-  mainnet: 'https://mainnet.tezrpc.me'
+  babylonnet: 'https://api.tez.ie/rpc/babylonnet/',
+  carthagenet: 'https://api.tez.ie/rpc/carthagenet/',
+  mainnet: 'https://mainnet.tezrpc.me/'
 };
 
 function ensureDirSync(dirpath) {

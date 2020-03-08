@@ -36,5 +36,5 @@ export declare class AddressToken extends ComparableToken {
     }): string;
     ExtractSchema(): string;
     ToKey({ bytes, string }: any): any;
-    compare(address1: string, address2: string): 1 | -1;
+    compare(address1: string, address2: string): number;
 }

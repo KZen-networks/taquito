@@ -100,12 +100,27 @@ See the Apache Version 2.0 License for specific language governing permissions
 and limitations under the License.
 ***************************************************************************** */
 
-function __spreadArrays() {
-    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
-    for (var r = Array(s), k = 0, i = 0; i < il; i++)
-        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
-            r[k] = a[j];
-    return r;
+function __read(o, n) {
+    var m = typeof Symbol === "function" && o[Symbol.iterator];
+    if (!m) return o;
+    var i = m.call(o), r, ar = [], e;
+    try {
+        while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
+    }
+    catch (error) { e = { error: error }; }
+    finally {
+        try {
+            if (r && !r.done && (m = i["return"])) m.call(i);
+        }
+        finally { if (e) throw e.error; }
+    }
+    return ar;
+}
+
+function __spread() {
+    for (var ar = [], i = 0; i < arguments.length; i++)
+        ar = ar.concat(__read(arguments[i]));
+    return ar;
 }
 
 var bs58check = require('bs58check');
@@ -147,7 +162,7 @@ var contractPrefix = [Prefix.KT1];
 var signaturePrefix = [Prefix.EDSIG, Prefix.P2SIG, Prefix.SPSIG, Prefix.SIG];
 var pkPrefix = [Prefix.EDPK, Prefix.SPPK, Prefix.P2PK];
 function validateAddress(value) {
-    return validatePrefixedValue(value, __spreadArrays(implicitPrefix, contractPrefix));
+    return validatePrefixedValue(value, __spread(implicitPrefix, contractPrefix));
 }
 function validateChain(value) {
     return validatePrefixedValue(value, [Prefix.NET]);

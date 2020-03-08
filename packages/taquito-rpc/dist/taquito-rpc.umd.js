@@ -163,7 +163,7 @@
          *
          * @description Get the block's hash, its unique identifier.
          *
-         * @see http://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-hash
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-hash
          */
         RpcClient.prototype.getBlockHash = function (_a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -189,7 +189,7 @@
          *
          * @description Access the balance of a contract.
          *
-         * @see http://tezos.gitlab.io/master/api/rpc.html#get-block-id-context-contracts-contract-id-balance
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-contracts-contract-id-balance
          */
         RpcClient.prototype.getBalance = function (address, _a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -215,7 +215,7 @@
          *
          * @description Access the data of the contract.
          *
-         * @see http://tezos.gitlab.io/master/api/rpc.html#get-block-id-context-contracts-contract-id-storage
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-contracts-contract-id-storage
          */
         RpcClient.prototype.getStorage = function (address, _a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -235,7 +235,7 @@
          *
          * @description Access the code and data of the contract.
          *
-         * @see http://tezos.gitlab.io/master/api/rpc.html#get-block-id-context-contracts-contract-id-script
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-contracts-contract-id-script
          */
         RpcClient.prototype.getScript = function (address, _a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -255,7 +255,7 @@
          *
          * @description Access the complete status of a contract.
          *
-         * @see http://tezos.gitlab.io/master/api/rpc.html#get-block-id-context-contracts-contract-id
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-contracts-contract-id
          */
         RpcClient.prototype.getContract = function (address, _a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -281,7 +281,7 @@
          *
          * @description Access the manager key of a contract.
          *
-         * @see http://tezos.gitlab.io/master/api/rpc.html#get-block-id-context-contracts-contract-id-manager-key
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-contracts-contract-id-manager-key
          */
         RpcClient.prototype.getManagerKey = function (address, _a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -301,12 +301,13 @@
          *
          * @description Access the delegate of a contract, if any.
          *
-         * @see http://tezos.gitlab.io/master/api/rpc.html#get-block-id-context-contracts-contract-id-delegate
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-contracts-contract-id-delegate
          */
         RpcClient.prototype.getDelegate = function (address, _a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
             return __awaiter(this, void 0, void 0, function () {
                 return __generator(this, function (_b) {
+                    console.log('getDelegate');
                     return [2 /*return*/, this.httpBackend.createRequest({
                             url: this.createURL("/chains/" + this.chain + "/blocks/" + block + "/context/contracts/" + address + "/delegate"),
                             method: 'GET',
@@ -321,7 +322,7 @@
          *
          * @description Access the value associated with a key in the big map storage of the contract.
          *
-         * @see http://tezos.gitlab.io/master/api/rpc.html#post-block-id-context-contracts-contract-id-big-map-get
+         * @see https://tezos.gitlab.io/api/rpc.html#post-block-id-context-contracts-contract-id-big-map-get
          */
         RpcClient.prototype.getBigMapKey = function (address, key, _a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -342,7 +343,7 @@
          *
          * @description Access the value associated with a key in a big map.
          *
-         * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-context-big-maps-big-map-id-script-expr
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-big-maps-big-map-id-script-expr
          */
         RpcClient.prototype.getBigMapExpr = function (id, expr, _a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -362,7 +363,7 @@
          *
          * @description Fetches information about a delegate from RPC.
          *
-         * @see http://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-context-delegates-pkh
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-delegates-pkh
          */
         RpcClient.prototype.getDelegates = function (address, _a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -399,7 +400,7 @@
          *
          * @description All constants
          *
-         * @see http://tezos.gitlab.io/master/api/rpc.html#get-block-id-context-constants
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-constants
          */
         RpcClient.prototype.getConstants = function (_a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -437,7 +438,7 @@
          *
          * @description All the information about a block
          *
-         * @see http://tezos.gitlab.io/master/api/rpc.html#get-block-id
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id
          */
         RpcClient.prototype.getBlock = function (_a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -462,7 +463,7 @@
          *
          * @description The whole block header
          *
-         * @see https://tezos.gitlab.io/tezos/api/rpc.html#get-block-id-header
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-header
          */
         RpcClient.prototype.getBlockHeader = function (_a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -487,7 +488,7 @@
          *
          * @description All the metadata associated to the block
          *
-         * @see https://tezos.gitlab.io/tezos/api/rpc.html#get-block-id-metadata
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-metadata
          */
         RpcClient.prototype.getBlockMetadata = function (_a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -513,7 +514,7 @@
          *
          * @description Retrieves the list of delegates allowed to bake a block.
          *
-         * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-helpers-baking-rights
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-helpers-baking-rights
          */
         RpcClient.prototype.getBakingRights = function (args, _a) {
             if (args === void 0) { args = {}; }
@@ -541,7 +542,7 @@
          *
          * @description Retrieves the list of delegates allowed to bake a block.
          *
-         * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-helpers-endorsing-rights
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-helpers-endorsing-rights
          */
         RpcClient.prototype.getEndorsingRights = function (args, _a) {
             if (args === void 0) { args = {}; }
@@ -567,7 +568,7 @@
          *
          * @description Ballots casted so far during a voting period
          *
-         * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-votes-ballot-list
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-votes-ballot-list
          */
         RpcClient.prototype.getBallotList = function (_a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -592,7 +593,7 @@
          *
          * @description Sum of ballots casted so far during a voting period.
          *
-         * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-votes-ballots
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-votes-ballots
          */
         RpcClient.prototype.getBallots = function (_a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -617,7 +618,7 @@
          *
          * @description Current period kind.
          *
-         * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-votes-current-period-kind
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-votes-current-period-kind
          */
         RpcClient.prototype.getCurrentPeriodKind = function (_a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -642,7 +643,7 @@
          *
          * @description Current proposal under evaluation.
          *
-         * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-votes-current-proposal
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-votes-current-proposal
          */
         RpcClient.prototype.getCurrentProposal = function (_a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -667,7 +668,7 @@
          *
          * @description Current expected quorum.
          *
-         * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-votes-current-quorum
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-votes-current-quorum
          */
         RpcClient.prototype.getCurrentQuorum = function (_a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -692,7 +693,7 @@
          *
          * @description List of delegates with their voting weight, in number of rolls.
          *
-         * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-votes-listings
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-votes-listings
          */
         RpcClient.prototype.getVotesListings = function (_a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -717,7 +718,7 @@
          *
          * @description List of proposals with number of supporters.
          *
-         * @see https://tezos.gitlab.io/mainnet/api/rpc.html#get-block-id-votes-proposals
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-votes-proposals
          */
         RpcClient.prototype.getProposals = function (_a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -743,7 +744,7 @@
          *
          * @description Forge an operation returning the unsigned bytes
          *
-         * @see https://tezos.gitlab.io/tezos/api/rpc.html#post-block-id-helpers-forge-operations
+         * @see https://tezos.gitlab.io/api/rpc.html#post-block-id-helpers-forge-operations
          */
         RpcClient.prototype.forgeOperations = function (data, _a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -762,7 +763,7 @@
          *
          * @description Inject an operation in node and broadcast it. Returns the ID of the operation. The `signedOperationContents` should be constructed using a contextual RPCs from the latest block and signed by the client. By default, the RPC will wait for the operation to be (pre-)validated before answering. See RPCs under /blocks/prevalidation for more details on the prevalidation context.
          *
-         * @see https://tezos.gitlab.io/tezos/api/rpc.html#post-injection-operation
+         * @see https://tezos.gitlab.io/api/rpc.html#post-injection-operation
          */
         RpcClient.prototype.injectOperation = function (signedOpBytes) {
             return __awaiter(this, void 0, void 0, function () {
@@ -781,7 +782,7 @@
          *
          * @description Simulate the validation of an operation
          *
-         * @see https://tezos.gitlab.io/tezos/api/rpc.html#post-block-id-helpers-preapply-operations
+         * @see https://tezos.gitlab.io/api/rpc.html#post-block-id-helpers-preapply-operations
          */
         RpcClient.prototype.preapplyOperations = function (ops, _a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -806,7 +807,7 @@
          *
          * @description Return the list of entrypoints of the contract
          *
-         * @see http://tezos.gitlab.io/zeronet/api/rpc.html#get-block-id-context-contracts-contract-id-entrypoints
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-contracts-contract-id-entrypoints
          *
          * @version 005_PsBABY5H
          */
@@ -833,7 +834,7 @@
          *
          * @description Run an operation without signature checks
          *
-         * @see https://tezos.gitlab.io/mainnet/api/rpc.html#post-block-id-helpers-scripts-run-operation
+         * @see https://tezos.gitlab.io/api/rpc.html#post-block-id-helpers-scripts-run-operation
          */
         RpcClient.prototype.runOperation = function (op, _a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -871,7 +872,7 @@
          *
          * @example packData({ data: { string: "test" }, type: { prim: "string" } })
          *
-         * @see http://tezos.gitlab.io/mainnet/api/rpc.html#post-block-id-helpers-scripts-pack-data
+         * @see https://tezos.gitlab.io/api/rpc.html#post-block-id-helpers-scripts-pack-data
          */
         RpcClient.prototype.packData = function (data, _a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;

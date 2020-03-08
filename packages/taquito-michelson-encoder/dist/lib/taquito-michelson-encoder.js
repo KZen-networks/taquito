@@ -7,4 +7,5 @@ __export(require("./schema/storage"));
 __export(require("./schema/parameter"));
 __export(require("./errors"));
 exports.UnitValue = Symbol();
+__export(require("./michelson-map"));
 //# sourceMappingURL=taquito-michelson-encoder.js.map

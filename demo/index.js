@@ -6,8 +6,9 @@ const { prefix, b58cencode } = require('../packages/taquito-utils/dist/lib/taqui
 const BigNumber = require('bignumber.js');
 
 const rpcUrl = {
-  carthagenet: 'https://carthagenet.smartpy.io/',
-  mainnet: 'https://mainnet.tezrpc.me'
+  babylonnet: 'https://api.tez.ie/rpc/babylonnet/',
+  carthagenet: 'https://api.tez.ie/rpc/carthagenet/',
+  mainnet: 'https://mainnet.tezrpc.me/'
 };
 
 async function getBalance(address, network) {
@@ -72,17 +73,23 @@ async function transferAll(fromPrivateKey, to, network) {
   const from = await Tezos.signer.publicKeyHash();
   try {
     // 1. mock transfer in order to calculate fee
-    const mockForgedBytes = await Tezos.contract.getTransferSignatureHash({
+    const isDelegatedPromise = isDelegated(from);
+    const mockForgedBytesPromise = Tezos.contract.getTransferSignatureHash({
       source: from,
       to,
       amount: 1,
       mutez: true
     });
 
+    const [_isDelegated, mockForgedBytes] = await Promise.all([
+      isDelegatedPromise,
+      mockForgedBytesPromise,
+    ]);
+
     // 2. calculate amount to transfer
     const totalFee = mockForgedBytes.opOb.contents.reduce((acc, currContent) => {
       return acc + parseInt(currContent.fee);
-    }, 0) + 1;
+    }, 0) + (_isDelegated ? 2 : 1);
     const storageLimit = mockForgedBytes.opOb.contents[mockForgedBytes.opOb.contents.length - 1].storage_limit * 1000;  // given in mtz
     const mutezBalance = await Tezos.rpc.getBalance(from);
     const mutezAmount = mutezBalance.minus(totalFee + storageLimit);
@@ -123,6 +130,16 @@ async function delegate(fromPrivateKey, to, network, trackingId) {
   } catch (err) {
     console.error('err =', err);
   }
+}
+
+async function isDelegated(address) {
+  let isDelegated = false;
+  try {
+    const delegate = await Tezos.rpc.getDelegate(address);
+    isDelegated = !!delegate;
+  } catch (e) {}
+
+  return isDelegated;
 }
 
 module.exports = { delegate, generateNewAccount, getBalance, transfer, transferAll };
