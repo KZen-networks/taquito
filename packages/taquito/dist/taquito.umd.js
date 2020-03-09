@@ -1087,41 +1087,6 @@
         return TransactionOperation;
     }(Operation));
 
-    var TZ_DECIMALS = 6;
-    var MTZ_DECIMALS = 3;
-    function getDecimal(format) {
-        switch (format) {
-            case 'tz':
-                return TZ_DECIMALS;
-            case 'mtz':
-                return MTZ_DECIMALS;
-            case 'mutez':
-            default:
-                return 0;
-        }
-    }
-    function format(from, to, amount) {
-        if (from === void 0) { from = 'mutez'; }
-        if (to === void 0) { to = 'mutez'; }
-        var bigNum = new BigNumber(amount);
-        if (bigNum.isNaN()) {
-            return amount;
-        }
-        return bigNum
-            .multipliedBy(Math.pow(10, getDecimal(from)))
-            .dividedBy(Math.pow(10, getDecimal(to)));
-    }
-
-    var NotEnoughFundsError = /** @class */ (function () {
-        function NotEnoughFundsError(address, balance, required) {
-            this.address = address;
-            this.balance = balance;
-            this.required = required;
-            this.name = 'Not enough funds error';
-            this.message = "Not enough funds. Address " + address + " has " + format('mutez', 'tz', balance) + " XTZ, but transaction requires " + format('mutez', 'tz', required) + " XTZ.";
-        }
-        return NotEnoughFundsError;
-    }());
     var InvalidParameterError = /** @class */ (function () {
         function InvalidParameterError(smartContractMethodName, sigs, args) {
             this.smartContractMethodName = smartContractMethodName;
@@ -1295,6 +1260,31 @@
         };
         return Contract;
     }());
+
+    var TZ_DECIMALS = 6;
+    var MTZ_DECIMALS = 3;
+    function getDecimal(format) {
+        switch (format) {
+            case 'tz':
+                return TZ_DECIMALS;
+            case 'mtz':
+                return MTZ_DECIMALS;
+            case 'mutez':
+            default:
+                return 0;
+        }
+    }
+    function format(from, to, amount) {
+        if (from === void 0) { from = 'mutez'; }
+        if (to === void 0) { to = 'mutez'; }
+        var bigNum = new BigNumber(amount);
+        if (bigNum.isNaN()) {
+            return amount;
+        }
+        return bigNum
+            .multipliedBy(Math.pow(10, getDecimal(from)))
+            .dividedBy(Math.pow(10, getDecimal(to)));
+    }
 
     var createOriginationOperation = function (_a) {
         var code = _a.code, init = _a.init, _b = _a.balance, balance = _b === void 0 ? '0' : _b, delegate = _a.delegate, storage = _a.storage, _c = _a.fee, fee = _c === void 0 ? exports.DEFAULT_FEE.ORIGINATION : _c, _d = _a.gasLimit, gasLimit = _d === void 0 ? exports.DEFAULT_GAS_LIMIT.ORIGINATION : _d, _e = _a.storageLimit, storageLimit = _e === void 0 ? exports.DEFAULT_STORAGE_LIMIT.ORIGINATION : _e;
@@ -2127,19 +2117,8 @@
                             requireReveal = !manager;
                             revealFee = requireReveal ? exports.DEFAULT_FEE.REVEAL : 0;
                             _storageLimit = isNewImplicitAccount ? exports.DEFAULT_STORAGE_LIMIT.TRANSFER : 0;
-                            // maximum possible, +1 to avoid emptying a delegated account
-                            console.log('transfer: Number(mutezAmount) =', Number(mutezAmount));
-                            console.log('transfer: revealFee =', revealFee);
-                            console.log('transfer: _storageLimit * 1000 =', _storageLimit * 1000);
-                            console.log('transfer: (isDelegated ? 1 : 0) =', (isDelegated ? 1 : 0));
                             required = Number(mutezAmount) + revealFee + _storageLimit * 1000 + (isDelegated ? 1 : 0);
-                            console.log('transfer: required =', required);
-                            fee = sourceBalance
-                                .minus(required)
-                                .toNumber();
-                            if (fee < 0) {
-                                throw new NotEnoughFundsError(pkh, sourceBalance, new BigNumber(required));
-                            }
+                            fee = sourceBalance.minus(required).toNumber();
                             DEFAULT_PARAMS = {
                                 fee: fee,
                                 storageLimit: _storageLimit,
@@ -3240,7 +3219,6 @@
     exports.InvalidDelegationSource = InvalidDelegationSource;
     exports.InvalidParameterError = InvalidParameterError;
     exports.MANAGER_LAMBDA = MANAGER_LAMBDA;
-    exports.NotEnoughFundsError = NotEnoughFundsError;
     exports.PollingSubscribeProvider = PollingSubscribeProvider;
     exports.RpcForger = RpcForger;
     exports.Tezos = Tezos;

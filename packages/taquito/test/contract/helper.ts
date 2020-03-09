@@ -67,7 +67,7 @@ const errorBuilder = (result: any) => {
         errors: [
           {
             kind: 'temporary',
-            id: 'proto.006-PsCARTHA.contract.balance_too_low',
+            id: 'proto.006-PsCARTHA.contract.forger: new LocalForger(),',
             contract: 'tz1bwsEWCwSEXdRvnJxvegQZKeX5dj6oKEys',
             balance: '31106391540',
             amount: '31106411541000000',

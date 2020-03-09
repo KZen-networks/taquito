@@ -26,7 +26,6 @@ import {
 } from './prepare';
 import { format } from '../format';
 import { DEFAULT_FEE, DEFAULT_GAS_LIMIT, DEFAULT_STORAGE_LIMIT } from '../constants';
-import { NotEnoughFundsError } from './errors';
 
 // RPC require a signature but do not verify it
 const SIGNATURE_STUB =
@@ -169,9 +168,6 @@ export class RPCEstimateProvider extends OperationEmitter implements EstimationP
     // maximum possible, +1 to avoid emptying a delegated account
     const required = Number(mutezAmount) + revealFee + _storageLimit * 1000 + (isDelegated ? 1 : 0);
     const fee = sourceBalance.minus(required).toNumber();
-    if (fee < 0) {
-      throw new NotEnoughFundsError(pkh, sourceBalance, new BigNumber(required));
-    }
 
     const DEFAULT_PARAMS = {
       fee,

@@ -1,17 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var format_1 = require("../format");
-var NotEnoughFundsError = /** @class */ (function () {
-    function NotEnoughFundsError(address, balance, required) {
-        this.address = address;
-        this.balance = balance;
-        this.required = required;
-        this.name = 'Not enough funds error';
-        this.message = "Not enough funds. Address " + address + " has " + format_1.format('mutez', 'tz', balance) + " XTZ, but transaction requires " + format_1.format('mutez', 'tz', required) + " XTZ.";
-    }
-    return NotEnoughFundsError;
-}());
-exports.NotEnoughFundsError = NotEnoughFundsError;
 var InvalidParameterError = /** @class */ (function () {
     function InvalidParameterError(smartContractMethodName, sigs, args) {
         this.smartContractMethodName = smartContractMethodName;

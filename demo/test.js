@@ -11,7 +11,6 @@ const {
   signTransferAndBroadcast,
 } = require('./index');
 const assert = require('assert');
-const { NotEnoughFundsError } = require("../packages/taquito");
 
 const network = 'carthagenet';
 
@@ -386,13 +385,10 @@ describe('Tezos API tests', () => {
 
     // 3. send amount between balance and balance+fees
     try {
-      const xtzAmount = sourceBalance.minus(fees / 2).dividedBy(MUTEZ_IN_TZ).toNumber();
+      const xtzAmount = sourceBalance.minus(fees).plus(2).dividedBy(MUTEZ_IN_TZ).toNumber();
       await transfer(revealedAccount1.privateKey, revealedAccount2.address, xtzAmount, network);
     } catch (err) {
-      assert.strictEqual(err.name, 'Not enough funds error');
-      assert.strictEqual(err.address, revealedAccount1.address);
-      assert.ok(err.required, revealedAccount1.required);
-      assert.ok(err.balance, revealedAccount1.balance);
+      assert.strictEqual(err.id, 'proto.006-PsCARTHA.contract.balance_too_low');
       return;
     }
 

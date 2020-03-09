@@ -111,7 +111,6 @@ var estimate_1 = require("./estimate");
 var prepare_1 = require("./prepare");
 var format_1 = require("../format");
 var constants_1 = require("../constants");
-var errors_1 = require("./errors");
 // RPC require a signature but do not verify it
 var SIGNATURE_STUB = 'edsigtkpiSSschcaCt9pUVrpNPf7TTcgvgDEDD6NCEHMy8NNQJCGnMfLZzYoQj74yLjo9wx6MPVV29CvVzgi7qEcEUok3k7AuMg';
 var RPCEstimateProvider = /** @class */ (function (_super) {
@@ -263,19 +262,8 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
                         requireReveal = !manager;
                         revealFee = requireReveal ? constants_1.DEFAULT_FEE.REVEAL : 0;
                         _storageLimit = isNewImplicitAccount ? constants_1.DEFAULT_STORAGE_LIMIT.TRANSFER : 0;
-                        // maximum possible, +1 to avoid emptying a delegated account
-                        console.log('transfer: Number(mutezAmount) =', Number(mutezAmount));
-                        console.log('transfer: revealFee =', revealFee);
-                        console.log('transfer: _storageLimit * 1000 =', _storageLimit * 1000);
-                        console.log('transfer: (isDelegated ? 1 : 0) =', (isDelegated ? 1 : 0));
                         required = Number(mutezAmount) + revealFee + _storageLimit * 1000 + (isDelegated ? 1 : 0);
-                        console.log('transfer: required =', required);
-                        fee = sourceBalance
-                            .minus(required)
-                            .toNumber();
-                        if (fee < 0) {
-                            throw new errors_1.NotEnoughFundsError(pkh, sourceBalance, new bignumber_js_1.default(required));
-                        }
+                        fee = sourceBalance.minus(required).toNumber();
                         DEFAULT_PARAMS = {
                             fee: fee,
                             storageLimit: _storageLimit,
