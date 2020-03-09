@@ -25,7 +25,7 @@ export declare class RPCEstimateProvider extends OperationEmitter implements Est
      *
      * @param TransferOperation Originate operation parameter
      */
-    transfer({ fee, storageLimit, gasLimit, ...rest }: TransferParams): Promise<Estimate>;
+    transfer({ storageLimit, gasLimit, ...rest }: TransferParams): Promise<Estimate>;
     isDelegated(address: string): Promise<boolean>;
     isNewImplicitAccount(address: string): Promise<boolean>;
     /**

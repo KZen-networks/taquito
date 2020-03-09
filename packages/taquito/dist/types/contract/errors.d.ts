@@ -1,3 +1,12 @@
+import BigNumber from "bignumber.js";
+export declare class NotEnoughFundsError implements Error {
+    address: string;
+    balance: BigNumber;
+    required: BigNumber;
+    name: string;
+    message: string;
+    constructor(address: string, balance: BigNumber, required: BigNumber);
+}
 export declare class InvalidParameterError implements Error {
     smartContractMethodName: string;
     sigs: any[];

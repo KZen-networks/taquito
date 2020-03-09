@@ -26,6 +26,7 @@ import {
 } from './prepare';
 import { format } from '../format';
 import { DEFAULT_FEE, DEFAULT_GAS_LIMIT, DEFAULT_STORAGE_LIMIT } from '../constants';
+import { NotEnoughFundsError } from './errors';
 
 // RPC require a signature but do not verify it
 const SIGNATURE_STUB =
@@ -136,7 +137,7 @@ export class RPCEstimateProvider extends OperationEmitter implements EstimationP
    *
    * @param TransferOperation Originate operation parameter
    */
-  async transfer({ fee, storageLimit, gasLimit, ...rest }: TransferParams) {
+  async transfer({ storageLimit, gasLimit, ...rest }: TransferParams) {
     // TODO - gather all promises into one Promise.all
     const pkh = await this.signer.publicKeyHash();
 
@@ -164,10 +165,16 @@ export class RPCEstimateProvider extends OperationEmitter implements EstimationP
     /* A transfer to a new implicit account would require burning funds for its storage
        https://tezos.stackexchange.com/questions/956/burn-fee-for-empty-account */
     const _storageLimit = isNewImplicitAccount ? DEFAULT_STORAGE_LIMIT.TRANSFER : 0;
+
+    // maximum possible, +1 to avoid emptying a delegated account
+    const required = Number(mutezAmount) + revealFee + _storageLimit * 1000 + (isDelegated ? 1 : 0);
+    const fee = sourceBalance.minus(required).toNumber();
+    if (fee < 0) {
+      throw new NotEnoughFundsError(pkh, sourceBalance, new BigNumber(required));
+    }
+
     const DEFAULT_PARAMS = {
-      fee: sourceBalance
-        .minus(Number(mutezAmount) + revealFee + _storageLimit * 1000 + (isDelegated ? 1 : 0))
-        .toNumber(), // maximum possible, +1 to avoid emptying a delegated account
+      fee,
       storageLimit: _storageLimit,
       gasLimit: DEFAULT_GAS_LIMIT.TRANSFER,
     };

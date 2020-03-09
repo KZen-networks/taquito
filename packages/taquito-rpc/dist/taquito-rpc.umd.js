@@ -307,7 +307,6 @@
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
             return __awaiter(this, void 0, void 0, function () {
                 return __generator(this, function (_b) {
-                    console.log('getDelegate');
                     return [2 /*return*/, this.httpBackend.createRequest({
                             url: this.createURL("/chains/" + this.chain + "/blocks/" + block + "/context/contracts/" + address + "/delegate"),
                             method: 'GET',

@@ -8,7 +8,7 @@ The `@taquito/taquito` package contains higher level functionality that builds u
 
 ```html
 <script src="https://unpkg.com/@taquito/taquito@6.1.0-beta.0/dist/taquito.min.js"
-crossorigin="anonymous" integrity="sha384-RU5Z+tTSzM38JVa25s+ILoLM2Sukj6J5eDDZlkth1hDQ9DKZSBbg7MGQA5EgAbC/"></script>
+crossorigin="anonymous" integrity="sha384-VvV5FdLyGXWrT3NH88nf0J3IEvXiGtSFBfsifBsqdaR/Yh/SbumhVWWkZCs+oEvy"></script>
 ```
 
 ## API Documentation

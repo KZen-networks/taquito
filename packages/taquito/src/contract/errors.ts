@@ -1,3 +1,18 @@
+import BigNumber from 'bignumber.js';
+import { format } from '../format';
+
+export class NotEnoughFundsError implements Error {
+  name: string = 'Not enough funds error';
+  message: string;
+  constructor(public address: string, public balance: BigNumber, public required: BigNumber) {
+    this.message = `Not enough funds. Address ${address} has ${format(
+      'mutez',
+      'tz',
+      balance
+    )} XTZ, but transaction requires ${format('mutez', 'tz', required)} XTZ.`;
+  }
+}
+
 export class InvalidParameterError implements Error {
   name: string = 'Invalid parameters error';
   message: string;

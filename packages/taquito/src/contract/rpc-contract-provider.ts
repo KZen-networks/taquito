@@ -2,6 +2,7 @@ import { Schema } from '@taquito/michelson-encoder';
 import {
   OperationContents,
   OperationContentsDelegation,
+  OperationContentsReveal,
   OperationContentsTransaction,
   ScriptResponse,
 } from '@taquito/rpc';
@@ -173,11 +174,13 @@ export class RpcContractProvider extends OperationEmitter implements ContractPro
    *
    * @description Get relevant parameters for later signing and broadcast of a delegate transaction
    *
-   * @returns ForgedBytes parameters needed to sign and broadcast
+   * @returns ForgedBytes parameters needed to sign and broadcast, and Number to represent fees in mutez
    *
    * @param params delegate parameters
    */
-  async getDelegateSignatureHash(params: DelegateParams): Promise<ForgedBytes> {
+  async getDelegateSignatureHashAndFees(
+    params: DelegateParams
+  ): Promise<{ forgedBytes: ForgedBytes; fees: Number }> {
     // Since babylon delegation source cannot smart contract
     if ((await this.context.isAnyProtocolActive(protocols['005'])) && /kt1/i.test(params.source)) {
       throw new InvalidDelegationSource(params.source);
@@ -186,10 +189,19 @@ export class RpcContractProvider extends OperationEmitter implements ContractPro
     const estimate = await this.estimate(params, this.estimator.setDelegate.bind(this.estimator));
     const operation = await createSetDelegateOperation({ ...params, ...estimate });
     const sourceOrDefault = params.source || (await this.signer.publicKeyHash());
-    return this.prepareAndForge({
+    const forgedBytes = await this.prepareAndForge({
       operation,
       source: sourceOrDefault,
     });
+    const fees = this.calculateTotalFees(forgedBytes);
+    return { forgedBytes, fees };
+  }
+
+  calculateTotalFees(forgedBytes: ForgedBytes): Number {
+    return (forgedBytes.opOb.contents as any[]).reduce((acc, content) => {
+      acc += parseInt(content.fee, 10) + parseInt(content.storage_limit, 10) * 1000; // storage_limit is given in mtz
+      return acc;
+    }, 0);
   }
 
   /**
@@ -279,18 +291,22 @@ export class RpcContractProvider extends OperationEmitter implements ContractPro
    *
    * @description Get relevant parameters for later signing and broadcast of a transfer transaction
    *
-   * @returns GetTransferSignatureHashResponse parameters needed to sign and broadcast
+   * @returns GetTransferSignatureHashResponse parameters needed to sign and broadcast, and a number which represent the fees in mutez
    *
    * @param params operation parameters
    */
-  async getTransferSignatureHash(params: TransferParams): Promise<ForgedBytes> {
+  async getTransferSignatureHashAndFees(
+    params: TransferParams
+  ): Promise<{ forgedBytes: ForgedBytes; fees: Number }> {
     const estimate = await this.estimate(params, this.estimator.transfer.bind(this.estimator));
     const operation = await createTransferOperation({
       ...params,
       ...estimate,
     });
     const source = params.source || (await this.signer.publicKeyHash());
-    return this.prepareAndForge({ operation, source });
+    const forgedBytes = await this.prepareAndForge({ operation, source });
+    const fees = this.calculateTotalFees(forgedBytes);
+    return { forgedBytes, fees };
   }
 
   /**

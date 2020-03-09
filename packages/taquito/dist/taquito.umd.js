@@ -1087,6 +1087,41 @@
         return TransactionOperation;
     }(Operation));
 
+    var TZ_DECIMALS = 6;
+    var MTZ_DECIMALS = 3;
+    function getDecimal(format) {
+        switch (format) {
+            case 'tz':
+                return TZ_DECIMALS;
+            case 'mtz':
+                return MTZ_DECIMALS;
+            case 'mutez':
+            default:
+                return 0;
+        }
+    }
+    function format(from, to, amount) {
+        if (from === void 0) { from = 'mutez'; }
+        if (to === void 0) { to = 'mutez'; }
+        var bigNum = new BigNumber(amount);
+        if (bigNum.isNaN()) {
+            return amount;
+        }
+        return bigNum
+            .multipliedBy(Math.pow(10, getDecimal(from)))
+            .dividedBy(Math.pow(10, getDecimal(to)));
+    }
+
+    var NotEnoughFundsError = /** @class */ (function () {
+        function NotEnoughFundsError(address, balance, required) {
+            this.address = address;
+            this.balance = balance;
+            this.required = required;
+            this.name = 'Not enough funds error';
+            this.message = "Not enough funds. Address " + address + " has " + format('mutez', 'tz', balance) + " XTZ, but transaction requires " + format('mutez', 'tz', required) + " XTZ.";
+        }
+        return NotEnoughFundsError;
+    }());
     var InvalidParameterError = /** @class */ (function () {
         function InvalidParameterError(smartContractMethodName, sigs, args) {
             this.smartContractMethodName = smartContractMethodName;
@@ -1260,31 +1295,6 @@
         };
         return Contract;
     }());
-
-    var TZ_DECIMALS = 6;
-    var MTZ_DECIMALS = 3;
-    function getDecimal(format) {
-        switch (format) {
-            case 'tz':
-                return TZ_DECIMALS;
-            case 'mtz':
-                return MTZ_DECIMALS;
-            case 'mutez':
-            default:
-                return 0;
-        }
-    }
-    function format(from, to, amount) {
-        if (from === void 0) { from = 'mutez'; }
-        if (to === void 0) { to = 'mutez'; }
-        var bigNum = new BigNumber(amount);
-        if (bigNum.isNaN()) {
-            return amount;
-        }
-        return bigNum
-            .multipliedBy(Math.pow(10, getDecimal(from)))
-            .dividedBy(Math.pow(10, getDecimal(to)));
-    }
 
     var createOriginationOperation = function (_a) {
         var code = _a.code, init = _a.init, _b = _a.balance, balance = _b === void 0 ? '0' : _b, delegate = _a.delegate, storage = _a.storage, _c = _a.fee, fee = _c === void 0 ? exports.DEFAULT_FEE.ORIGINATION : _c, _d = _a.gasLimit, gasLimit = _d === void 0 ? exports.DEFAULT_GAS_LIMIT.ORIGINATION : _d, _e = _a.storageLimit, storageLimit = _e === void 0 ? exports.DEFAULT_STORAGE_LIMIT.ORIGINATION : _e;
@@ -1613,13 +1623,13 @@
          *
          * @description Get relevant parameters for later signing and broadcast of a delegate transaction
          *
-         * @returns ForgedBytes parameters needed to sign and broadcast
+         * @returns ForgedBytes parameters needed to sign and broadcast, and Number to represent fees in mutez
          *
          * @param params delegate parameters
          */
-        RpcContractProvider.prototype.getDelegateSignatureHash = function (params) {
+        RpcContractProvider.prototype.getDelegateSignatureHashAndFees = function (params) {
             return __awaiter(this, void 0, void 0, function () {
-                var estimate, operation, sourceOrDefault, _a;
+                var estimate, operation, sourceOrDefault, _a, forgedBytes, fees;
                 return __generator(this, function (_b) {
                     switch (_b.label) {
                         case 0: return [4 /*yield*/, this.context.isAnyProtocolActive(protocols['005'])];
@@ -1642,13 +1652,23 @@
                             _b.label = 5;
                         case 5:
                             sourceOrDefault = _a;
-                            return [2 /*return*/, this.prepareAndForge({
+                            return [4 /*yield*/, this.prepareAndForge({
                                     operation: operation,
                                     source: sourceOrDefault,
                                 })];
+                        case 6:
+                            forgedBytes = _b.sent();
+                            fees = this.calculateTotalFees(forgedBytes);
+                            return [2 /*return*/, { forgedBytes: forgedBytes, fees: fees }];
                     }
                 });
             });
+        };
+        RpcContractProvider.prototype.calculateTotalFees = function (forgedBytes) {
+            return forgedBytes.opOb.contents.reduce(function (acc, content) {
+                acc += parseInt(content.fee, 10) + parseInt(content.storage_limit, 10) * 1000; // storage_limit is given in mtz
+                return acc;
+            }, 0);
         };
         /**
          *
@@ -1758,13 +1778,13 @@
          *
          * @description Get relevant parameters for later signing and broadcast of a transfer transaction
          *
-         * @returns GetTransferSignatureHashResponse parameters needed to sign and broadcast
+         * @returns GetTransferSignatureHashResponse parameters needed to sign and broadcast, and a number which represent the fees in mutez
          *
          * @param params operation parameters
          */
-        RpcContractProvider.prototype.getTransferSignatureHash = function (params) {
+        RpcContractProvider.prototype.getTransferSignatureHashAndFees = function (params) {
             return __awaiter(this, void 0, void 0, function () {
-                var estimate, operation, source, _a;
+                var estimate, operation, source, _a, forgedBytes, fees;
                 return __generator(this, function (_b) {
                     switch (_b.label) {
                         case 0: return [4 /*yield*/, this.estimate(params, this.estimator.transfer.bind(this.estimator))];
@@ -1781,7 +1801,11 @@
                             _b.label = 4;
                         case 4:
                             source = _a;
-                            return [2 /*return*/, this.prepareAndForge({ operation: operation, source: source })];
+                            return [4 /*yield*/, this.prepareAndForge({ operation: operation, source: source })];
+                        case 5:
+                            forgedBytes = _b.sent();
+                            fees = this.calculateTotalFees(forgedBytes);
+                            return [2 /*return*/, { forgedBytes: forgedBytes, fees: fees }];
                     }
                 });
             });
@@ -2077,9 +2101,9 @@
          * @param TransferOperation Originate operation parameter
          */
         RPCEstimateProvider.prototype.transfer = function (_a) {
-            var fee = _a.fee, storageLimit = _a.storageLimit, gasLimit = _a.gasLimit, rest = __rest(_a, ["fee", "storageLimit", "gasLimit"]);
+            var storageLimit = _a.storageLimit, gasLimit = _a.gasLimit, rest = __rest(_a, ["storageLimit", "gasLimit"]);
             return __awaiter(this, void 0, void 0, function () {
-                var pkh, mutezAmount, sourceBalancePromise, managerPromise, isNewImplicitAccountPromise, isDelegatedPromise, _b, sourceBalance, manager, isNewImplicitAccount, isDelegated, requireReveal, revealFee, _storageLimit, DEFAULT_PARAMS, op;
+                var pkh, mutezAmount, sourceBalancePromise, managerPromise, isNewImplicitAccountPromise, isDelegatedPromise, _b, sourceBalance, manager, isNewImplicitAccount, isDelegated, requireReveal, revealFee, _storageLimit, required, fee, DEFAULT_PARAMS, op;
                 return __generator(this, function (_c) {
                     switch (_c.label) {
                         case 0: return [4 /*yield*/, this.signer.publicKeyHash()];
@@ -2103,8 +2127,21 @@
                             requireReveal = !manager;
                             revealFee = requireReveal ? exports.DEFAULT_FEE.REVEAL : 0;
                             _storageLimit = isNewImplicitAccount ? exports.DEFAULT_STORAGE_LIMIT.TRANSFER : 0;
+                            // maximum possible, +1 to avoid emptying a delegated account
+                            console.log('transfer: Number(mutezAmount) =', Number(mutezAmount));
+                            console.log('transfer: revealFee =', revealFee);
+                            console.log('transfer: _storageLimit * 1000 =', _storageLimit * 1000);
+                            console.log('transfer: (isDelegated ? 1 : 0) =', (isDelegated ? 1 : 0));
+                            required = Number(mutezAmount) + revealFee + _storageLimit * 1000 + (isDelegated ? 1 : 0);
+                            console.log('transfer: required =', required);
+                            fee = sourceBalance
+                                .minus(required)
+                                .toNumber();
+                            if (fee < 0) {
+                                throw new NotEnoughFundsError(pkh, sourceBalance, new BigNumber(required));
+                            }
                             DEFAULT_PARAMS = {
-                                fee: sourceBalance.minus(Number(mutezAmount) + revealFee + _storageLimit * 1000 + (isDelegated ? 1 : 0)).toNumber(),
+                                fee: fee,
                                 storageLimit: _storageLimit,
                                 gasLimit: exports.DEFAULT_GAS_LIMIT.TRANSFER,
                             };
@@ -3203,6 +3240,7 @@
     exports.InvalidDelegationSource = InvalidDelegationSource;
     exports.InvalidParameterError = InvalidParameterError;
     exports.MANAGER_LAMBDA = MANAGER_LAMBDA;
+    exports.NotEnoughFundsError = NotEnoughFundsError;
     exports.PollingSubscribeProvider = PollingSubscribeProvider;
     exports.RpcForger = RpcForger;
     exports.Tezos = Tezos;
