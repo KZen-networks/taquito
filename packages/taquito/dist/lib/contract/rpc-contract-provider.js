@@ -359,25 +359,30 @@ var RpcContractProvider = /** @class */ (function (_super) {
      */
     RpcContractProvider.prototype.registerDelegate = function (params) {
         return __awaiter(this, void 0, void 0, function () {
-            var estimate, source, operation, opBytes, _a, hash, context, forgedBytes, opResponse;
-            return __generator(this, function (_b) {
-                switch (_b.label) {
+            var estimate, sourceOrDefault, _a, operation, opBytes, _b, hash, context, forgedBytes, opResponse;
+            return __generator(this, function (_c) {
+                switch (_c.label) {
                     case 0: return [4 /*yield*/, this.estimate(params, this.estimator.registerDelegate.bind(this.estimator))];
                     case 1:
-                        estimate = _b.sent();
+                        estimate = _c.sent();
+                        _a = params.source;
+                        if (_a) return [3 /*break*/, 3];
                         return [4 /*yield*/, this.signer.publicKeyHash()];
                     case 2:
-                        source = _b.sent();
-                        return [4 /*yield*/, prepare_1.createRegisterDelegateOperation(__assign(__assign({}, params), estimate), source)];
+                        _a = (_c.sent());
+                        _c.label = 3;
                     case 3:
-                        operation = _b.sent();
-                        return [4 /*yield*/, this.prepareAndForge({ operation: operation })];
+                        sourceOrDefault = _a;
+                        return [4 /*yield*/, prepare_1.createRegisterDelegateOperation(__assign(__assign({}, params), estimate), sourceOrDefault)];
                     case 4:
-                        opBytes = _b.sent();
-                        return [4 /*yield*/, this.signAndInject(opBytes)];
+                        operation = _c.sent();
+                        return [4 /*yield*/, this.prepareAndForge({ operation: operation })];
                     case 5:
-                        _a = _b.sent(), hash = _a.hash, context = _a.context, forgedBytes = _a.forgedBytes, opResponse = _a.opResponse;
-                        return [2 /*return*/, new delegate_operation_1.DelegateOperation(hash, operation, source, forgedBytes, opResponse, context)];
+                        opBytes = _c.sent();
+                        return [4 /*yield*/, this.signAndInject(opBytes)];
+                    case 6:
+                        _b = _c.sent(), hash = _b.hash, context = _b.context, forgedBytes = _b.forgedBytes, opResponse = _b.opResponse;
+                        return [2 /*return*/, new delegate_operation_1.DelegateOperation(hash, operation, sourceOrDefault, forgedBytes, opResponse, context)];
                 }
             });
         });

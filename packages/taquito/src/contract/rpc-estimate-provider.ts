@@ -119,8 +119,8 @@ export class RPCEstimateProvider extends OperationEmitter implements EstimationP
    *
    * @param OriginationOperation Originate operation parameter
    */
-  async originate({ fee, storageLimit, gasLimit, ...rest }: OriginateParams) {
-    const pkh = await this.signer.publicKeyHash();
+  async originate({ fee, storageLimit, gasLimit, source, ...rest }: OriginateParams) {
+    const pkh = source || (await this.signer.publicKeyHash());
     const DEFAULT_PARAMS = await this.getAccountLimits(pkh);
     const op = await createOriginationOperation({
       ...rest,
@@ -136,9 +136,9 @@ export class RPCEstimateProvider extends OperationEmitter implements EstimationP
    *
    * @param TransferOperation Originate operation parameter
    */
-  async transfer({ storageLimit, gasLimit, ...rest }: TransferParams) {
+  async transfer({ storageLimit, gasLimit, source, ...rest }: TransferParams) {
     // TODO - gather all promises into one Promise.all
-    const pkh = await this.signer.publicKeyHash();
+    const pkh = source || (await this.signer.publicKeyHash());
 
     // we want to make the initial fee estimation as tight as possible because otherwise the estimation fails here.
     const mutezAmount = rest.mutez
@@ -289,13 +289,12 @@ export class RPCEstimateProvider extends OperationEmitter implements EstimationP
    * @param Estimate
    */
   async registerDelegate(params: RegisterDelegateParams) {
-    const DEFAULT_PARAMS = await this.getAccountLimits(await this.signer.publicKeyHash());
+    const sourceOrDefault = params.source || (await this.signer.publicKeyHash());
+    const DEFAULT_PARAMS = await this.getAccountLimits(sourceOrDefault);
     const op = await createRegisterDelegateOperation(
       { ...params, ...DEFAULT_PARAMS },
-      await this.signer.publicKeyHash()
+      sourceOrDefault
     );
-    return (
-      await this.createEstimate({ operation: op, source: await this.signer.publicKeyHash() })
-    )[0];
+    return (await this.createEstimate({ operation: op, source: sourceOrDefault }))[0];
   }
 }

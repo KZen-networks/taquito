@@ -257,11 +257,21 @@ export class RpcContractProvider extends OperationEmitter implements ContractPro
       params,
       this.estimator.registerDelegate.bind(this.estimator)
     );
-    const source = await this.signer.publicKeyHash();
-    const operation = await createRegisterDelegateOperation({ ...params, ...estimate }, source);
+    const sourceOrDefault = params.source || (await this.signer.publicKeyHash());
+    const operation = await createRegisterDelegateOperation(
+      { ...params, ...estimate },
+      sourceOrDefault
+    );
     const opBytes = await this.prepareAndForge({ operation });
     const { hash, context, forgedBytes, opResponse } = await this.signAndInject(opBytes);
-    return new DelegateOperation(hash, operation, source, forgedBytes, opResponse, context);
+    return new DelegateOperation(
+      hash,
+      operation,
+      sourceOrDefault,
+      forgedBytes,
+      opResponse,
+      context
+    );
   }
 
   /**
