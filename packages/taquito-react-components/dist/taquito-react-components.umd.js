@@ -4,8 +4,8 @@
     (global = global || self, factory(global.taquitoReactComponents = {}, global.React, global.taquito, global.BigNumber));
 }(this, (function (exports, React, taquito, BigNumber) { 'use strict';
 
-    React = React && Object.prototype.hasOwnProperty.call(React, 'default') ? React['default'] : React;
-    BigNumber = BigNumber && Object.prototype.hasOwnProperty.call(BigNumber, 'default') ? BigNumber['default'] : BigNumber;
+    React = React && React.hasOwnProperty('default') ? React['default'] : React;
+    BigNumber = BigNumber && BigNumber.hasOwnProperty('default') ? BigNumber['default'] : BigNumber;
 
     /*! *****************************************************************************
     Copyright (c) Microsoft Corporation. All rights reserved.
