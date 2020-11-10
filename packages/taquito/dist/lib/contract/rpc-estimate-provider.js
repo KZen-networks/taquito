@@ -263,7 +263,9 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
                         revealFee = requireReveal ? constants_1.DEFAULT_FEE.REVEAL : 0;
                         _storageLimit = isNewImplicitAccount ? constants_1.DEFAULT_STORAGE_LIMIT.TRANSFER : 0;
                         DEFAULT_PARAMS = {
-                            fee: sourceBalance.minus(Number(mutezAmount) + revealFee + _storageLimit * 1000 + (isDelegated ? 1 : 0)).toNumber(),
+                            fee: sourceBalance
+                                .minus(Number(mutezAmount) + revealFee + _storageLimit * 1000 + (isDelegated ? 1 : 0))
+                                .toNumber(),
                             storageLimit: _storageLimit,
                             gasLimit: constants_1.DEFAULT_GAS_LIMIT.TRANSFER,
                         };

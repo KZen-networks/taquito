@@ -5,7 +5,7 @@ import { Schema, ParameterSchema } from '@taquito/michelson-encoder';
 export { MapTypecheckError, MichelsonMap, UnitValue } from '@taquito/michelson-encoder';
 import { ml2mic, sexp2mic, encodeExpr } from '@taquito/utils';
 import { ReplaySubject, defer, timer, from, Subject, Observable } from 'rxjs';
-import { switchMap, filter, first, tap, map, mapTo, switchMapTo, shareReplay, takeUntil, pluck, concatMap, distinctUntilKeyChanged, publishReplay, refCount } from 'rxjs/operators';
+import { switchMap, filter, first, tap, map, mapTo, switchMapTo, shareReplay, takeUntil, pluck, concatMap, distinctUntilKeyChanged } from 'rxjs/operators';
 import BigNumber from 'bignumber.js';
 
 /*! *****************************************************************************
@@ -2110,7 +2110,9 @@ var RPCEstimateProvider = /** @class */ (function (_super) {
                         revealFee = requireReveal ? DEFAULT_FEE.REVEAL : 0;
                         _storageLimit = isNewImplicitAccount ? DEFAULT_STORAGE_LIMIT.TRANSFER : 0;
                         DEFAULT_PARAMS = {
-                            fee: sourceBalance.minus(Number(mutezAmount) + revealFee + _storageLimit * 1000 + (isDelegated ? 1 : 0)).toNumber(),
+                            fee: sourceBalance
+                                .minus(Number(mutezAmount) + revealFee + _storageLimit * 1000 + (isDelegated ? 1 : 0))
+                                .toNumber(),
                             storageLimit: _storageLimit,
                             gasLimit: DEFAULT_GAS_LIMIT.TRANSFER,
                         };
@@ -2529,7 +2531,7 @@ var PollingSubscribeProvider = /** @class */ (function () {
         if (POLL_INTERVAL === void 0) { POLL_INTERVAL = 20000; }
         this.context = context;
         this.POLL_INTERVAL = POLL_INTERVAL;
-        this.newBlock$ = timer(0, this.POLL_INTERVAL).pipe(map(function () { return _this.context; }), switchMap(getLastBlock), distinctUntilKeyChanged('hash'), publishReplay(), refCount());
+        this.newBlock$ = timer(0, this.POLL_INTERVAL).pipe(map(function () { return _this.context; }), switchMap(getLastBlock), distinctUntilKeyChanged('hash'));
     }
     PollingSubscribeProvider.prototype.subscribe = function (_filter) {
         return new ObservableSubscription(this.newBlock$.pipe(pluck('hash')));

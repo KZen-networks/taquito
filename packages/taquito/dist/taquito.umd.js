@@ -2104,7 +2104,9 @@
                             revealFee = requireReveal ? exports.DEFAULT_FEE.REVEAL : 0;
                             _storageLimit = isNewImplicitAccount ? exports.DEFAULT_STORAGE_LIMIT.TRANSFER : 0;
                             DEFAULT_PARAMS = {
-                                fee: sourceBalance.minus(Number(mutezAmount) + revealFee + _storageLimit * 1000 + (isDelegated ? 1 : 0)).toNumber(),
+                                fee: sourceBalance
+                                    .minus(Number(mutezAmount) + revealFee + _storageLimit * 1000 + (isDelegated ? 1 : 0))
+                                    .toNumber(),
                                 storageLimit: _storageLimit,
                                 gasLimit: exports.DEFAULT_GAS_LIMIT.TRANSFER,
                             };
@@ -2523,7 +2525,7 @@
             if (POLL_INTERVAL === void 0) { POLL_INTERVAL = 20000; }
             this.context = context;
             this.POLL_INTERVAL = POLL_INTERVAL;
-            this.newBlock$ = rxjs.timer(0, this.POLL_INTERVAL).pipe(operators.map(function () { return _this.context; }), operators.switchMap(getLastBlock), operators.distinctUntilKeyChanged('hash'), operators.publishReplay(), operators.refCount());
+            this.newBlock$ = rxjs.timer(0, this.POLL_INTERVAL).pipe(operators.map(function () { return _this.context; }), operators.switchMap(getLastBlock), operators.distinctUntilKeyChanged('hash'));
         }
         PollingSubscribeProvider.prototype.subscribe = function (_filter) {
             return new ObservableSubscription(this.newBlock$.pipe(operators.pluck('hash')));
