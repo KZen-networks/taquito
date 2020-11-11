@@ -3,6 +3,177 @@ title: Versions
 author: Simon Boissonneault-Robert
 ---
 
+
+## v6.3.4-beta.0 Release Notes
+
+### Changes
+
+#### Get method for RPC URL in the Taquito RPC client
+
+It's now possible to find out what URL the RPC Client is configured to use.
+
+#### The TezBridge wallet provider allows setting of the RPC url
+
+Add the ability to Set a host for TezBridge. This is helpful when deploying contracts to a local node, the wallet user does not have to manually update the RPC URL in TezBridge. The application can inform TezBridge what node to use, offering a better user experience. 
+
+#### Documentation
+
+We continue to add and improve documentation for Taquito. Feel free to file Issues for features or missing documentation!
+
+## v6.3.3-beta.0 Release Notes
+
+Bug fix release to allow proper encoding of a call to a smart contract method that has an option parameter.
+
+## v6.3.2-beta.0
+
+New API for Apps to interact with Wallets, and a new Michelson codec package
+
+### Changes
+
+####Wallet API
+
+A new API for making requests to Wallets.
+
+The new Taquito Wallet API is designed to interact with wallets, and it supports Beacon, the TZIP-10 standard. Read more about this API here: https://medium.com/@jevonearth/the-start-of-a-better-dapp-wallet-story-for-tezos-7538a399724e
+
+#### New Michelson parser / codec with validation and macro expansion
+
+We have published a brand new package that allows you to encode and decode between "plain" Michelson and Michelson in JSON representation. This is a standalone implementation with no external dependencies. It offers Michelson Macro expansion and Michelson validation using TypeScript Types.
+
+This makes originating Smart Contracts in plain Michelson easy, previously you had to do tezos-client command-line gymnastic to convert & expand plain Michelson to JSON Michelson.
+
+You can now write pass the initial storage of your contract using plain Michelson.
+
+Reading and displaying Michelson code and storage from on-chain contracts is now super simple. You can even configure formatting options for pretty printing.
+
+This package replaces `thesexp2mic` and `ml2mic` methods, which have now been removed from the Taquito codebase.
+
+### Documentation
+
+We are working hard on improving documentation. We have published docs for Estimation and Validation on our website, and we have improved the TypeDoc API documentation for these features also. Documentation for InMemorySigner has been improved with more examples.
+
+### Remote Signer signature validation
+
+The Remote Signer implementation now validates that signatures match against the public key. Test coverage for the Remote Signer has been increased.
+
+### Integration Tests
+
+Integration tests have been sped up significantly by using a special key API that issues throw away secret keys. This allows integration tests to run in parallel, as each account has its own counter. When running tests with a faucet key, the tests must run synchronously, waiting for a new block for each test. We will release the aforementioned key API sometime in the future.
+
+### Others
+
+- Update deps. Taquito now builds using Typescript 3.9.5
+- The hexNonce function has been removed from taquito-utils. This function was not in use, and of little value.
+- getBigMapKey has been deprecated in the Tezos RPC in favour of getBigMapKeyByID.
+- Fixed a bug where explicit limits were ignored by the estimator
+- Website live code examples have the key boilerplate hidden, allowing the reader to focus more on the code.
+
+## v6.1.1-beta.0 Release Notes
+
+### Changes
+
+Tezos.importKey() has been marked as deprecated. Please update your application code to use the importKey() method from the @taquito/singer package instead. The deprecated Tezos.importKey() method will be removed in a future release.
+
+`import { importKey } from '@taquito/signer';`
+
+### Documentation
+All run-able code examples that broadcast operations now all target carthagenet.
+
+Several improvements to documentation. The TypeDoc API docs are now more prominently linked from within our documentation website
+
+### Removal of streamer and indexer packages
+
+The streamer and indexer packages have been removed
+
+### Improvements & Fixes
+
+Replace instanceof with static method to allow cross-module type checks [#325]
+Correct types are applied to parameters on the RPC response #312
+
+
+## v6.1.0-beta.0 Release Notes
+
+### Features
+
+#### (Breaking Change) Support for complex keys in Map and BigMap
+
+This release introduces a breaking change to Map and BigMaps. In the forthcoming protocol "Carthage/006_PsCARTHA", it is possible to use a complex type composed of a pair as a key in a Smart Contracts Map or BigMap. This type of key isn't useable in Javascripts Map objects. 
+
+This release introduces `MichelsonMap()` class that provides an abstraction over these details.
+
+Existing code that accesses Map or BigMap storage via the Taquito data abstraction in the following fashion: 
+
+```typescript
+const account = storage.accounts["tz2Ch1abG7FNiibmV26Uzgdsnfni9XGrk5wD"]
+```
+
+Must be updated to use the `get()` and `set()` methods as follows;
+
+```typescript
+const account = storage.accounts.get("tz2Ch1abG7FNiibmV26Uzgdsnfni9XGrk5wD")
+```
+Additionally, if existing code initializes storage (during contract origination for example), this code must be updated. One can create a new `MichelsonMap()` as follows:
+
+```typescript
+    const map = new MichelsonMap()
+    
+    map.set({firstName:"Joe", lastName: "Bloe"}, "myValue")
+    
+    Tezos.contract.originate({
+        code: myContractWithAPairAsKeyCode,
+        storage: map
+    })
+```
+
+Or one can also use the `fromLiteral` convenience method, as illustrated below.
+
+```typescript
+    Tezos.contract.originate({
+        code: assertContractCode,
+        storage: {
+            owner: "tz2Ch1abG7FNiibmV26Uzgdsnfni9XGrk5wD",
+            accounts: MichelsonMap.fromLiteral({
+                "tz2Ch1abG7FNiibmV26Uzgdsnfni9XGrk5wD": {
+                    balance: "1",
+                    allowances: MichelsonMap.fromLiteral({
+                      "tz3YjfexGakCDeCseXFUpcXPSAN9xHxE9TH2": "1"
+                    })
+                }   
+            })
+        }
+    })
+```
+
+A pair can by uses as a key as follows:
+
+```typescript
+map.set({firstName:"Joe", lastName: "Bloe"}, "myValue")
+storage.get({firstName:"Joe", lastName: "Bloe"})
+```
+
+[https://github.com/ecadlabs/taquito/issues/251](https://github.com/ecadlabs/taquito/issues/251)
+
+### Documentation
+
+New documentation covering how to interact with Smart Contracts using Taquito [https://tezostaquito.io/docs/smartcontracts/](https://tezostaquito.io/docs/smartcontracts/)
+
+### Improvements & Fixes
+
+* Add a `UnitType` symbol to the `MichelsonEncoder` [#221][[https://github.com/ecadlabs/taquito/issues/221](https://github.com/ecadlabs/taquito/issues/221)]
+* Improved test coverage throughout the project
+* Represent all Operation kinds as an ENUM
+* Fix for handling of Zarith numbers as reported by Doyensec's security audit [https://github.com/ecadlabs/taquito/issues/264](https://github.com/ecadlabs/taquito/issues/264)
+* Validate entrypoint name length as reported by Doyensec's security audit [https://github.com/ecadlabs/taquito/issues/265](https://github.com/ecadlabs/taquito/issues/265)
+* Improve [multi-sig integration test](https://github.com/ecadlabs/taquito/blob/f3a19c4682ba5af2073e72c5d06734860596f455/integration-tests/multisig-contract-scenario.spec.ts) example
+* Add the mutez option in send method for Smart contract abstraction #255
+
+### CDN Bundle
+
+```html
+<script src="https://unpkg.com/@taquito/taquito@6.1.0-beta.0/dist/taquito.min.js"
+crossorigin="anonymous" integrity="sha384-sk4V+57zLUCfkna8z4p1u6CioucJqmeo+QnaiXoFiuE8vdkm7/ae2TNFLbL+Ys02"></script>
+```
+
 ## 6.0.3-beta.0 Local Forging, Batch Ops and more
 
 This release brings several new features to Taquito. In line with our versioning policy, we have also bumped the major release number to v6 on this release, as this version has and continues to be tested against the Carthage testnet. By using this version of Taquito, your application will be compatible with both the Babylonnet protocol and the anticipated Carthage protocol. 
