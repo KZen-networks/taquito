@@ -1,24 +1,26 @@
 (function (global, factory) {
     typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('@taquito/http-utils'), require('bignumber.js')) :
     typeof define === 'function' && define.amd ? define(['exports', '@taquito/http-utils', 'bignumber.js'], factory) :
-    (global = global || self, factory(global.taquitoRpc = {}, global.httpUtils, global.BigNumber));
+    (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.taquitoRpc = {}, global.httpUtils, global.BigNumber));
 }(this, (function (exports, httpUtils, BigNumber) { 'use strict';
 
-    BigNumber = BigNumber && BigNumber.hasOwnProperty('default') ? BigNumber['default'] : BigNumber;
+    function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
+
+    var BigNumber__default = /*#__PURE__*/_interopDefaultLegacy(BigNumber);
 
     /*! *****************************************************************************
-    Copyright (c) Microsoft Corporation. All rights reserved.
-    Licensed under the Apache License, Version 2.0 (the "License"); you may not use
-    this file except in compliance with the License. You may obtain a copy of the
-    License at http://www.apache.org/licenses/LICENSE-2.0
+    Copyright (c) Microsoft Corporation.
 
-    THIS CODE IS PROVIDED ON AN *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
-    WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
-    MERCHANTABLITY OR NON-INFRINGEMENT.
+    Permission to use, copy, modify, and/or distribute this software for any
+    purpose with or without fee is hereby granted.
 
-    See the Apache Version 2.0 License for specific language governing permissions
-    and limitations under the License.
+    THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+    REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+    AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+    INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+    LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+    OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+    PERFORMANCE OF THIS SOFTWARE.
     ***************************************************************************** */
 
     var __assign = function() {
@@ -45,10 +47,11 @@
     }
 
     function __awaiter(thisArg, _arguments, P, generator) {
+        function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
         return new (P || (P = Promise))(function (resolve, reject) {
             function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
             function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-            function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+            function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
             step((generator = generator.apply(thisArg, _arguments || [])).next());
         });
     }
@@ -109,7 +112,7 @@
                 setByPath(response, key, res);
                 return;
             }
-            res = new BigNumber(item);
+            res = new BigNumber__default['default'](item);
             setByPath(response, key, res);
         });
         return response;
@@ -129,7 +132,6 @@
         OpKind["BALLOT"] = "ballot";
     })(exports.OpKind || (exports.OpKind = {}));
 
-    var defaultRPC = 'https://mainnet.tezrpc.me';
     var defaultChain = 'main';
     var defaultRPCOptions = { block: 'head' };
     /***
@@ -138,15 +140,14 @@
     var RpcClient = /** @class */ (function () {
         /**
          *
-         * @param url rpc root url (default https://mainnet.tezrpc.me)
+         * @param url rpc root url
          * @param chain chain (default main)
          * @param httpBackend Http backend that issue http request.
          * You can override it by providing your own if you which to hook in the request/response
          *
-         * @example new RpcClient('https://mainnet.tezrpc.me', 'main') this will use https://mainnet.tezrpc.me/chains/main
+         * @example new RpcClient('https://api.tez.ie/rpc/mainnet', 'main') this will use https://api.tez.ie/rpc/mainnet/chains/main
          */
         function RpcClient(url, chain, httpBackend) {
-            if (url === void 0) { url = defaultRPC; }
             if (chain === void 0) { chain = defaultChain; }
             if (httpBackend === void 0) { httpBackend = new httpUtils.HttpBackend(); }
             this.url = url;
@@ -184,6 +185,31 @@
         };
         /**
          *
+         * @param options contains generic configuration for rpc calls
+         *
+         * @description List the ancestors of the given block which, if referred to as the branch in an operation header, are recent enough for that operation to be included in the current block.
+         *
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-live-blocks
+         */
+        RpcClient.prototype.getLiveBlocks = function (_a) {
+            var block = (_a === void 0 ? defaultRPCOptions : _a).block;
+            return __awaiter(this, void 0, void 0, function () {
+                var blocks;
+                return __generator(this, function (_b) {
+                    switch (_b.label) {
+                        case 0: return [4 /*yield*/, this.httpBackend.createRequest({
+                                url: this.createURL("/chains/" + this.chain + "/blocks/" + block + "/live_blocks"),
+                                method: 'GET',
+                            })];
+                        case 1:
+                            blocks = _b.sent();
+                            return [2 /*return*/, blocks];
+                    }
+                });
+            });
+        };
+        /**
+         *
          * @param address address from which we want to retrieve the balance
          * @param options contains generic configuration for rpc calls
          *
@@ -203,7 +229,7 @@
                             })];
                         case 1:
                             balance = _b.sent();
-                            return [2 /*return*/, new BigNumber(balance)];
+                            return [2 /*return*/, new BigNumber__default['default'](balance)];
                     }
                 });
             });
@@ -269,7 +295,7 @@
                             })];
                         case 1:
                             contractResponse = _b.sent();
-                            return [2 /*return*/, __assign(__assign({}, contractResponse), { balance: new BigNumber(contractResponse.balance) })];
+                            return [2 /*return*/, __assign(__assign({}, contractResponse), { balance: new BigNumber__default['default'](contractResponse.balance) })];
                     }
                 });
             });
@@ -321,7 +347,9 @@
          *
          * @description Access the value associated with a key in the big map storage of the contract.
          *
-         * @see https://tezos.gitlab.io/api/rpc.html#post-block-id-context-contracts-contract-id-big-map-get
+         * @deprecated Deprecated in favor of getBigMapKeyByID
+         *
+         * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-contracts-contract-id-script
          */
         RpcClient.prototype.getBigMapKey = function (address, key, _a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -378,15 +406,15 @@
                             response = _b.sent();
                             return [2 /*return*/, {
                                     deactivated: response.deactivated,
-                                    balance: new BigNumber(response.balance),
-                                    frozen_balance: new BigNumber(response.frozen_balance),
+                                    balance: new BigNumber__default['default'](response.balance),
+                                    frozen_balance: new BigNumber__default['default'](response.frozen_balance),
                                     frozen_balance_by_cycle: response.frozen_balance_by_cycle.map(function (_a) {
                                         var deposit = _a.deposit, fees = _a.fees, rewards = _a.rewards, rest = __rest(_a, ["deposit", "fees", "rewards"]);
-                                        return (__assign(__assign({}, rest), { deposit: new BigNumber(deposit), fees: new BigNumber(fees), rewards: new BigNumber(rewards) }));
+                                        return (__assign(__assign({}, rest), { deposit: new BigNumber__default['default'](deposit), fees: new BigNumber__default['default'](fees), rewards: new BigNumber__default['default'](rewards) }));
                                     }),
-                                    staking_balance: new BigNumber(response.staking_balance),
+                                    staking_balance: new BigNumber__default['default'](response.staking_balance),
                                     delegated_contracts: response.delegated_contracts,
-                                    delegated_balance: new BigNumber(response.delegated_balance),
+                                    delegated_balance: new BigNumber__default['default'](response.delegated_balance),
                                     grace_period: response.grace_period,
                                 }];
                     }
@@ -419,12 +447,16 @@
                                 'hard_gas_limit_per_block',
                                 'proof_of_work_threshold',
                                 'tokens_per_roll',
+                                'seed_nonce_revelation_tip',
                                 'block_security_deposit',
                                 'endorsement_security_deposit',
                                 'block_reward',
                                 'endorsement_reward',
                                 'cost_per_byte',
                                 'hard_storage_limit_per_operation',
+                                'test_chain_duration',
+                                'baking_reward_per_endorsement',
+                                'delay_per_missing_endorsement'
                             ]);
                             return [2 /*return*/, __assign(__assign({}, response), castedResponse)];
                     }
@@ -433,11 +465,14 @@
         };
         /**
          *
-         * @param options contains generic configuration for rpc calls
+         * @param options contains generic configuration for rpc calls. See examples for various available sytaxes.
          *
          * @description All the information about a block
          *
          * @see https://tezos.gitlab.io/api/rpc.html#get-block-id
+         * @example getBlock() will default to /main/chains/block/head.
+         * @example getBlock({ block: head~2 }) will return an offset of 2 blocks.
+         * @example getBlock({ block: BL8fTiWcSxWCjiMVnDkbh6EuhqVPZzgWheJ2dqwrxYRm9AephXh~2 }) will return an offset of 2 blocks from given block hash..
          */
         RpcClient.prototype.getBlock = function (_a) {
             var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -886,7 +921,7 @@
                         case 1:
                             _b = _c.sent(), gas = _b.gas, rest = __rest(_b, ["gas"]);
                             formattedGas = gas;
-                            tryBigNumber = new BigNumber(gas || '');
+                            tryBigNumber = new BigNumber__default['default'](gas || '');
                             if (!tryBigNumber.isNaN()) {
                                 formattedGas = tryBigNumber;
                             }
@@ -894,6 +929,13 @@
                     }
                 });
             });
+        };
+        /**
+         *
+         * @description Return rpc root url
+         */
+        RpcClient.prototype.getRpcUrl = function () {
+            return this.url;
         };
         return RpcClient;
     }());

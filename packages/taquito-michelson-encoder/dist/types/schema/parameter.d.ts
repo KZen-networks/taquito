@@ -8,8 +8,8 @@ export declare class ParameterSchema {
     static fromRPCResponse(val: {
         script: ScriptResponse;
     }): ParameterSchema;
-    readonly isMultipleEntryPoint: boolean;
-    readonly hasAnnotation: boolean;
+    get isMultipleEntryPoint(): boolean;
+    get hasAnnotation(): boolean;
     constructor(val: MichelsonV1Expression);
     Execute(val: any, semantics?: Semantic): any;
     Encode(...args: any[]): any;

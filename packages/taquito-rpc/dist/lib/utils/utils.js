@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.castToString = exports.castToBigNumber = void 0;
 var getByPath = require('lodash/get');
 var setByPath = require('lodash/set');
 var bignumber_js_1 = require("bignumber.js");
@@ -56,7 +57,7 @@ function castToString(data, keys) {
             response[key] = castToString(item);
             return;
         }
-        if (!(item instanceof bignumber_js_1.default)) {
+        if (!bignumber_js_1.default.isBigNumber(item)) {
             response[key] = item;
             return;
         }

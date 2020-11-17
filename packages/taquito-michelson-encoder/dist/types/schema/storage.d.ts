@@ -1,11 +1,14 @@
 import { MichelsonV1Expression, ScriptResponse } from '@taquito/rpc';
 import { Semantic } from '../tokens/token';
 import { RpcTransaction } from './model';
+declare const schemaTypeSymbol: unique symbol;
 /**
  * @warn Our current smart contract abstraction feature is currently in preview. It's API is not final, and it may not cover every use case (yet). We will greatly appreciate any feedback on this feature.
  */
 export declare class Schema {
     private root;
+    [schemaTypeSymbol]: boolean;
+    static isSchema(obj: any): obj is Schema;
     private bigMap?;
     static fromRPCResponse(val: {
         script: ScriptResponse;
@@ -32,3 +35,4 @@ export declare class Schema {
      */
     ComputeState(tx: RpcTransaction[], state: any): any;
 }
+export {};

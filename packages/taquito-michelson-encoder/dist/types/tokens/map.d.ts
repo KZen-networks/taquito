@@ -1,4 +1,4 @@
-import { Token, TokenFactory, Semantic, TokenValidationError, ComparableToken } from './token';
+import { ComparableToken, Semantic, Token, TokenFactory, TokenValidationError } from './token';
 export declare class MapValidationError extends TokenValidationError {
     value: any;
     token: MapToken;
@@ -19,8 +19,8 @@ export declare class MapToken extends Token {
         args: any[];
         annots: any[];
     }, idx: number, fac: TokenFactory);
-    readonly ValueSchema: Token;
-    readonly KeySchema: ComparableToken;
+    get ValueSchema(): Token;
+    get KeySchema(): ComparableToken;
     private isValid;
     Execute(val: any[], semantics?: Semantic): {
         [key: string]: any;

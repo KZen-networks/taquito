@@ -36,6 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Tz2 = exports.Tz3 = exports.ECKey = void 0;
 var sodium = require('libsodium-wrappers');
 var utils_1 = require("@taquito/utils");
 var toBuffer = require('typedarray-to-buffer');
@@ -74,16 +75,9 @@ var ECKey = /** @class */ (function () {
         }
         this._key = decrypt(utils_1.b58cdecode(this.key, utils_1.prefix[keyPrefix]));
         var keyPair = new elliptic.ec(this.curve).keyFromPrivate(this._key);
-        var pref = keyPair
-            .getPublic()
-            .getY()
-            .toArray()[31] % 2
-            ? 3
-            : 2;
-        this._publicKey = toBuffer(new Uint8Array([pref].concat(keyPair
-            .getPublic()
-            .getX()
-            .toArray())));
+        var pref = keyPair.getPublic().getY().toArray()[31] % 2 ? 3 : 2;
+        var pad = new Array(32).fill(0);
+        this._publicKey = toBuffer(new Uint8Array([pref].concat(pad.concat(keyPair.getPublic().getX().toArray()).slice(-32))));
     }
     /**
      *
@@ -92,13 +86,12 @@ var ECKey = /** @class */ (function () {
      */
     ECKey.prototype.sign = function (bytes, bytesHash) {
         return __awaiter(this, void 0, void 0, function () {
-            var key, sig, signature, signatureBuffer, sbytes;
+            var key, sig, signature, sbytes;
             return __generator(this, function (_a) {
                 key = new elliptic.ec(this.curve).keyFromPrivate(this._key);
                 sig = key.sign(bytesHash, { canonical: true });
-                signature = new Uint8Array(sig.r.toArray().concat(sig.s.toArray()));
-                signatureBuffer = toBuffer(signature);
-                sbytes = bytes + utils_1.buf2hex(signatureBuffer);
+                signature = sig.r.toString('hex', 64) + sig.s.toString('hex', 64);
+                sbytes = bytes + signature;
                 return [2 /*return*/, {
                         bytes: bytes,
                         sig: utils_1.b58cencode(signature, utils_1.prefix.sig),

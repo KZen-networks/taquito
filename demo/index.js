@@ -1,20 +1,21 @@
 const crypto = require('crypto');
 const { InMemorySigner } = require('../packages/taquito-signer/dist/lib');
 const { LocalForger } = require('../packages/taquito-local-forging/dist/lib/taquito-local-forging');
-const { Tezos, DEFAULT_GAS_LIMIT } = require('../packages/taquito/dist/lib/taquito');
+const { TezosToolkit, DEFAULT_GAS_LIMIT, DEFAULT_STORAGE_LIMIT, DEFAULT_FEE } = require('../packages/taquito/dist/lib/taquito');
 const { prefix, b58cencode } = require('../packages/taquito-utils/dist/lib/taquito-utils');
 const BigNumber = require('bignumber.js');
+
+const MUTEZ_IN_TZ = 1000000;
 
 const rpcUrl = {
   babylonnet: 'https://api.tez.ie/rpc/babylonnet/',
   carthagenet: 'https://api.tez.ie/rpc/carthagenet/',
+  delphinet: 'https://api.tez.ie/rpc/delphinet/',
   mainnet: 'https://mainnet.tezrpc.me/'
 };
 
 async function getBalance(address, network) {
-  Tezos.setProvider({
-    rpc: rpcUrl[network]
-  });
+  const Tezos = new TezosToolkit(rpcUrl[network]);
   try {
     return Tezos.tz.getBalance(address)
   } catch (e) {
@@ -25,6 +26,7 @@ async function getBalance(address, network) {
 async function generateNewAccount() {
   const privateKeyHex = crypto.randomBytes(32).toString('hex');
   const privateKey = b58cencode(privateKeyHex, prefix['spsk']);
+  const Tezos = new TezosToolkit(rpcUrl['mainnet']);
   Tezos.setProvider({
     signer: new InMemorySigner(privateKey)
   });
@@ -33,10 +35,10 @@ async function generateNewAccount() {
 }
 
 async function transfer(fromPrivateKey, to, xtzAmount, network) {
+  const Tezos = new TezosToolkit(rpcUrl[network]);
   Tezos.setProvider({
     signer: new InMemorySigner(fromPrivateKey),
     forger: new LocalForger(),
-    rpc: rpcUrl[network]
   });
   const from = await Tezos.signer.publicKeyHash();
   try {
@@ -65,57 +67,58 @@ async function transfer(fromPrivateKey, to, xtzAmount, network) {
 }
 
 async function transferAll(fromPrivateKey, to, network) {
+  const Tezos = new TezosToolkit(rpcUrl[network]);
   Tezos.setProvider({
     signer: new InMemorySigner(fromPrivateKey),
     forger: new LocalForger(),
-    rpc: rpcUrl[network]
   });
   const from = await Tezos.signer.publicKeyHash();
-  try {
-    // 1. mock transfer in order to calculate fee
-    const isDelegatedPromise = isDelegated(from);
-    const mockForgedBytesPromise = Tezos.contract.getTransferSignatureHash({
-      source: from,
-      to,
-      amount: 1,
-      mutez: true
-    });
+  const managerPromise = Tezos.rpc.getManagerKey(from);
+  const isDelegatedPromise = isDelegated(from, network);
+  const balancePromise = Tezos.tz.getBalance(from);
+  const isDestinationAddressActivePromise = isAddressActive(to, network);
 
-    const [_isDelegated, mockForgedBytes] = await Promise.all([
-      isDelegatedPromise,
-      mockForgedBytesPromise,
-    ]);
+  const [manager, _isDelegated, balance, isDestinationAddressActive] = await Promise.all([
+    managerPromise,
+    isDelegatedPromise,
+    balancePromise,
+    isDestinationAddressActivePromise
+  ]);
+  const requireReveal = !manager;
 
-    // 2. calculate amount to transfer
-    const totalFee = mockForgedBytes.opOb.contents.reduce((acc, currContent) => {
-      return acc + parseInt(currContent.fee);
-    }, 0) + (_isDelegated ? 2 : 1);
-    const storageLimit = mockForgedBytes.opOb.contents[mockForgedBytes.opOb.contents.length - 1].storage_limit * 1000;  // given in mtz
-    const mutezBalance = await Tezos.rpc.getBalance(from);
-    const mutezAmount = mutezBalance.minus(totalFee + storageLimit);
+  // A transfer from an unrevealed account will require a an additional fee of 0.00142 tz (reveal operation)
+  const revealFee = requireReveal ? DEFAULT_FEE.REVEAL : 0;
+  /* A delegated implicit account cannot be emptied:
+     https://tezos.stackexchange.com/questions/2118/assert-failure-src-proto-005-psbabym1-lib-protocol-contract-storage-ml55516 */
+  const delegateLeftover = _isDelegated ? 1 : 0;
+  const storageFee = !isDestinationAddressActive ? 64251 : 0;
 
-    // 3. get signature hash of actual transfer
-    const forgedBytes = await Tezos.contract.getTransferSignatureHash({
-      source: from,
-      to,
-      amount: mutezAmount,
-      mutez: true
-    });
+  const estimate = await Tezos.estimate.transfer({ to, amount: balance.minus(revealFee + storageFee + delegateLeftover).toNumber(), mutez : true, storageLimit: storageFee ? DEFAULT_STORAGE_LIMIT.TRANSFER : 0 });
 
-    const {prefixSig, sbytes} = await Tezos.signer.sign(forgedBytes.opbytes, new Uint8Array([3]));
+  // The max amount that can be sent now is the total balance minus the fees + reveal fees (assuming the dest is already allocated)
+  const maxAmount = balance.minus(estimate.suggestedFeeMutez + revealFee + storageFee + delegateLeftover).toNumber();
 
-    // 4. inject signature and broadcast
-    return Tezos.contract.injectTransferSignatureAndBroadcast(forgedBytes, prefixSig, sbytes);
-  } catch (err) {
-    console.error('err =', err);
-  }
+  // Get signature hash
+  const forgedBytes = await Tezos.contract.getTransferSignatureHash({
+    source: from,
+    to,
+    mutez: true,
+    amount: maxAmount,
+    fee: estimate.suggestedFeeMutez,
+    gasLimit: estimate.gasLimit,
+    storageLimit: storageFee ? DEFAULT_STORAGE_LIMIT.TRANSFER : 0
+  });
+  const {prefixSig, sbytes} = await Tezos.signer.sign(forgedBytes.opbytes, new Uint8Array([3]));
+
+  // Inject signature and broadcast
+  return Tezos.contract.injectTransferSignatureAndBroadcast(forgedBytes, prefixSig, sbytes);
 }
 
 async function delegate(fromPrivateKey, to, network, trackingId) {
+  const Tezos = new TezosToolkit(rpcUrl[network]);
   Tezos.setProvider({
     signer: new InMemorySigner(fromPrivateKey),
     forger: new LocalForger(),
-    rpc: rpcUrl[network]
   });
   try {
     const source = await Tezos.signer.publicKeyHash();
@@ -132,9 +135,10 @@ async function delegate(fromPrivateKey, to, network, trackingId) {
   }
 }
 
-async function isDelegated(address) {
+async function isDelegated(address, network) {
   let isDelegated = false;
   try {
+    const Tezos = new TezosToolkit(rpcUrl[network]);
     const delegate = await Tezos.rpc.getDelegate(address);
     isDelegated = !!delegate;
   } catch (e) {}
@@ -142,4 +146,14 @@ async function isDelegated(address) {
   return isDelegated;
 }
 
-module.exports = { delegate, generateNewAccount, getBalance, transfer, transferAll };
+async function isAddressActive(address, network) {
+  try {
+    const Tezos = new TezosToolkit(rpcUrl[network]);
+    let balanceInMutez = await Tezos.tz.getBalance(address);
+    return balanceInMutez.gt(0);
+  } catch (e) {
+    return false;
+  }
+}
+
+module.exports = { delegate, generateNewAccount, getBalance, transfer, transferAll, isAddressActive, rpcUrl };

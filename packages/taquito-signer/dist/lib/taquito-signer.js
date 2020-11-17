@@ -1,4 +1,14 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -36,6 +46,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.InMemorySigner = void 0;
 var sodium = require('libsodium-wrappers');
 var utils_1 = require("@taquito/utils");
 var toBuffer = require('typedarray-to-buffer');
@@ -43,6 +54,7 @@ var ed_key_1 = require("./ed-key");
 var ec_key_1 = require("./ec-key");
 var pbkdf2_1 = require("pbkdf2");
 var bip39_1 = require("bip39");
+__exportStar(require("./import-key"), exports);
 /**
  * @description A local implementation of the signer. Will represent a Tezos account and be able to produce signature in its behalf
  *

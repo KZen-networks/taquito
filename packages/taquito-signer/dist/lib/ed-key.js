@@ -36,6 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Tz1 = void 0;
 var libsodium_wrappers_1 = require("libsodium-wrappers");
 var utils_1 = require("@taquito/utils");
 var typedarray_to_buffer_1 = require("typedarray-to-buffer");

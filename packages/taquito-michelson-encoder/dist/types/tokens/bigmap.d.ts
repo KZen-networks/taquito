@@ -1,4 +1,4 @@
-import { Token, TokenFactory, ComparableToken, Semantic, TokenValidationError } from './token';
+import { ComparableToken, Semantic, Token, TokenFactory, TokenValidationError } from './token';
 export declare class BigMapValidationError extends TokenValidationError {
     value: any;
     token: BigMapToken;
@@ -19,8 +19,8 @@ export declare class BigMapToken extends Token {
         args: any[];
         annots?: any[];
     }, idx: number, fac: TokenFactory);
-    readonly ValueSchema: Token;
-    readonly KeySchema: ComparableToken;
+    get ValueSchema(): Token;
+    get KeySchema(): ComparableToken;
     ExtractSchema(): {
         [x: number]: any;
     };

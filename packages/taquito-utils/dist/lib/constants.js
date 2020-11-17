@@ -1,6 +1,7 @@
 "use strict";
 var _a, _b;
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.prefixLength = exports.prefix = exports.Prefix = void 0;
 var Prefix;
 (function (Prefix) {
     Prefix["TZ1"] = "tz1";

@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.BadSigningDataError = exports.OperationNotAuthorizedError = exports.KeyNotFoundError = void 0;
 var KeyNotFoundError = /** @class */ (function () {
     function KeyNotFoundError(message, innerException) {
         this.message = message;

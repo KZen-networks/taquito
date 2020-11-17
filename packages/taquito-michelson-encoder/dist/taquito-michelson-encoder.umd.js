@@ -1,32 +1,34 @@
 (function (global, factory) {
     typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('fast-json-stable-stringify'), require('bignumber.js'), require('@taquito/utils')) :
     typeof define === 'function' && define.amd ? define(['exports', 'fast-json-stable-stringify', 'bignumber.js', '@taquito/utils'], factory) :
-    (global = global || self, factory(global.taquitoMichelsonEncoder = {}, global.stringify, global.BigNumber, global.utils));
+    (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.taquitoMichelsonEncoder = {}, global.stringify, global.BigNumber, global.utils));
 }(this, (function (exports, stringify, BigNumber, utils) { 'use strict';
 
-    stringify = stringify && stringify.hasOwnProperty('default') ? stringify['default'] : stringify;
-    BigNumber = BigNumber && BigNumber.hasOwnProperty('default') ? BigNumber['default'] : BigNumber;
+    function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
+
+    var stringify__default = /*#__PURE__*/_interopDefaultLegacy(stringify);
+    var BigNumber__default = /*#__PURE__*/_interopDefaultLegacy(BigNumber);
 
     /*! *****************************************************************************
-    Copyright (c) Microsoft Corporation. All rights reserved.
-    Licensed under the Apache License, Version 2.0 (the "License"); you may not use
-    this file except in compliance with the License. You may obtain a copy of the
-    License at http://www.apache.org/licenses/LICENSE-2.0
+    Copyright (c) Microsoft Corporation.
 
-    THIS CODE IS PROVIDED ON AN *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
-    WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
-    MERCHANTABLITY OR NON-INFRINGEMENT.
+    Permission to use, copy, modify, and/or distribute this software for any
+    purpose with or without fee is hereby granted.
 
-    See the Apache Version 2.0 License for specific language governing permissions
-    and limitations under the License.
+    THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+    REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+    AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+    INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+    LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+    OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+    PERFORMANCE OF THIS SOFTWARE.
     ***************************************************************************** */
     /* global Reflect, Promise */
 
     var extendStatics = function(d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
         return extendStatics(d, b);
     };
 
@@ -76,14 +78,15 @@
     }
 
     function __values(o) {
-        var m = typeof Symbol === "function" && o[Symbol.iterator], i = 0;
+        var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
         if (m) return m.call(o);
-        return {
+        if (o && typeof o.length === "number") return {
             next: function () {
                 if (o && i >= o.length) o = void 0;
                 return { value: o && o[i++], done: !o };
             }
         };
+        throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
     }
 
     function __read(o, n) {
@@ -108,6 +111,257 @@
             ar = ar.concat(__read(arguments[i]));
         return ar;
     }
+
+    var _a;
+    // Retrieve a unique symbol associated with the key from the environment
+    // Used in order to identify all object that are of type MichelsonMap even if they come from different module
+    var michelsonMapTypeSymbol = Symbol.for('taquito-michelson-map-type-symbol');
+    var isMapType = function (value) {
+        return 'args' in value && Array.isArray(value.args) && value.args.length === 2;
+    };
+    var MapTypecheckError = /** @class */ (function () {
+        function MapTypecheckError(value, type, errorType) {
+            this.value = value;
+            this.type = type;
+            this.name = 'MapTypecheckError';
+            this.message = errorType + " not compliant with underlying michelson type";
+        }
+        return MapTypecheckError;
+    }());
+    /**
+     * @description Michelson Map is an abstraction over the michelson native map. It supports complex Pair as key
+     */
+    var MichelsonMap = /** @class */ (function () {
+        /**
+         * @param mapType If specified key and value will be type-checked before being added to the map
+         *
+         * @example new MichelsonMap({ prim: "map", args: [{prim: "string"}, {prim: "int"}]})
+         */
+        function MichelsonMap(mapType) {
+            this.valueMap = new Map();
+            this.keyMap = new Map();
+            this[_a] = true;
+            if (mapType) {
+                this.setType(mapType);
+            }
+        }
+        // Used to check if an object is a michelson map.
+        // Using instanceof was not working for project that had multiple instance of taquito dependencies
+        // as the class constructor is different
+        MichelsonMap.isMichelsonMap = function (obj) {
+            return obj && obj[michelsonMapTypeSymbol] === true;
+        };
+        MichelsonMap.prototype.setType = function (mapType) {
+            if (!isMapType(mapType)) {
+                throw new Error('mapType is not a valid michelson map type');
+            }
+            this.keySchema = new Schema(mapType.args[0]);
+            this.valueSchema = new Schema(mapType.args[1]);
+        };
+        MichelsonMap.prototype.removeType = function () {
+            this.keySchema = undefined;
+            this.valueSchema = undefined;
+        };
+        MichelsonMap.fromLiteral = function (obj, mapType) {
+            var map = new MichelsonMap(mapType);
+            Object.keys(obj).forEach(function (key) {
+                map.set(key, obj[key]);
+            });
+            return map;
+        };
+        MichelsonMap.prototype.typecheckKey = function (key) {
+            if (this.keySchema) {
+                return this.keySchema.Typecheck(key);
+            }
+            return true;
+        };
+        MichelsonMap.prototype.typecheckValue = function (value) {
+            if (this.valueSchema) {
+                return this.valueSchema.Typecheck(value);
+            }
+            return true;
+        };
+        MichelsonMap.prototype.assertTypecheckValue = function (value) {
+            if (!this.typecheckValue(value)) {
+                throw new MapTypecheckError(value, this.valueSchema, 'value');
+            }
+        };
+        MichelsonMap.prototype.assertTypecheckKey = function (key) {
+            if (!this.typecheckKey(key)) {
+                throw new MapTypecheckError(key, this.keySchema, 'key');
+            }
+        };
+        MichelsonMap.prototype.serializeDeterministically = function (key) {
+            return stringify__default['default'](key);
+        };
+        MichelsonMap.prototype.keys = function () {
+            var _b, _c, _d, key, e_1_1;
+            var e_1, _e;
+            return __generator(this, function (_f) {
+                switch (_f.label) {
+                    case 0:
+                        _f.trys.push([0, 5, 6, 7]);
+                        _b = __values(this.entries()), _c = _b.next();
+                        _f.label = 1;
+                    case 1:
+                        if (!!_c.done) return [3 /*break*/, 4];
+                        _d = __read(_c.value, 1), key = _d[0];
+                        return [4 /*yield*/, key];
+                    case 2:
+                        _f.sent();
+                        _f.label = 3;
+                    case 3:
+                        _c = _b.next();
+                        return [3 /*break*/, 1];
+                    case 4: return [3 /*break*/, 7];
+                    case 5:
+                        e_1_1 = _f.sent();
+                        e_1 = { error: e_1_1 };
+                        return [3 /*break*/, 7];
+                    case 6:
+                        try {
+                            if (_c && !_c.done && (_e = _b.return)) _e.call(_b);
+                        }
+                        finally { if (e_1) throw e_1.error; }
+                        return [7 /*endfinally*/];
+                    case 7: return [2 /*return*/];
+                }
+            });
+        };
+        MichelsonMap.prototype.values = function () {
+            var _b, _c, _d, value, e_2_1;
+            var e_2, _e;
+            return __generator(this, function (_f) {
+                switch (_f.label) {
+                    case 0:
+                        _f.trys.push([0, 5, 6, 7]);
+                        _b = __values(this.entries()), _c = _b.next();
+                        _f.label = 1;
+                    case 1:
+                        if (!!_c.done) return [3 /*break*/, 4];
+                        _d = __read(_c.value, 2), value = _d[1];
+                        return [4 /*yield*/, value];
+                    case 2:
+                        _f.sent();
+                        _f.label = 3;
+                    case 3:
+                        _c = _b.next();
+                        return [3 /*break*/, 1];
+                    case 4: return [3 /*break*/, 7];
+                    case 5:
+                        e_2_1 = _f.sent();
+                        e_2 = { error: e_2_1 };
+                        return [3 /*break*/, 7];
+                    case 6:
+                        try {
+                            if (_c && !_c.done && (_e = _b.return)) _e.call(_b);
+                        }
+                        finally { if (e_2) throw e_2.error; }
+                        return [7 /*endfinally*/];
+                    case 7: return [2 /*return*/];
+                }
+            });
+        };
+        MichelsonMap.prototype.entries = function () {
+            var _b, _c, key, e_3_1;
+            var e_3, _d;
+            return __generator(this, function (_e) {
+                switch (_e.label) {
+                    case 0:
+                        _e.trys.push([0, 5, 6, 7]);
+                        _b = __values(this.valueMap.keys()), _c = _b.next();
+                        _e.label = 1;
+                    case 1:
+                        if (!!_c.done) return [3 /*break*/, 4];
+                        key = _c.value;
+                        return [4 /*yield*/, [this.keyMap.get(key), this.valueMap.get(key)]];
+                    case 2:
+                        _e.sent();
+                        _e.label = 3;
+                    case 3:
+                        _c = _b.next();
+                        return [3 /*break*/, 1];
+                    case 4: return [3 /*break*/, 7];
+                    case 5:
+                        e_3_1 = _e.sent();
+                        e_3 = { error: e_3_1 };
+                        return [3 /*break*/, 7];
+                    case 6:
+                        try {
+                            if (_c && !_c.done && (_d = _b.return)) _d.call(_b);
+                        }
+                        finally { if (e_3) throw e_3.error; }
+                        return [7 /*endfinally*/];
+                    case 7: return [2 /*return*/];
+                }
+            });
+        };
+        MichelsonMap.prototype.get = function (key) {
+            this.assertTypecheckKey(key);
+            var strKey = this.serializeDeterministically(key);
+            return this.valueMap.get(strKey);
+        };
+        /**
+         *
+         * @description Set a key and a value in the MichelsonMap. If the key already exists, override the current value.
+         *
+         * @example map.set("myKey", "myValue") // Using a string as key
+         *
+         * @example map.set({0: "test", 1: "test1"}, "myValue") // Using a pair as key
+         *
+         * @warn The same key can be represented in multiple ways, depending on the type of the key. This duplicate key situation will cause a runtime error (duplicate key) when sending the map data to the Tezos RPC node.
+         *
+         * For example, consider a contract with a map whose key is of type boolean.  If you set the following values in MichelsonMap: map.set(false, "myValue") and map.set(null, "myValue").
+         *
+         * You will get two unique entries in the MichelsonMap. These values will both be evaluated as falsy by the MichelsonEncoder and ultimately rejected by the Tezos RPC.
+         */
+        MichelsonMap.prototype.set = function (key, value) {
+            this.assertTypecheckKey(key);
+            this.assertTypecheckValue(value);
+            var strKey = this.serializeDeterministically(key);
+            this.keyMap.set(strKey, key);
+            this.valueMap.set(strKey, value);
+        };
+        MichelsonMap.prototype.delete = function (key) {
+            this.assertTypecheckKey(key);
+            this.keyMap.delete(this.serializeDeterministically(key));
+            this.valueMap.delete(this.serializeDeterministically(key));
+        };
+        MichelsonMap.prototype.has = function (key) {
+            this.assertTypecheckKey(key);
+            var strKey = this.serializeDeterministically(key);
+            return this.keyMap.has(strKey) && this.valueMap.has(strKey);
+        };
+        MichelsonMap.prototype.clear = function () {
+            this.keyMap.clear();
+            this.valueMap.clear();
+        };
+        Object.defineProperty(MichelsonMap.prototype, "size", {
+            get: function () {
+                return this.keyMap.size;
+            },
+            enumerable: false,
+            configurable: true
+        });
+        MichelsonMap.prototype.forEach = function (cb) {
+            var e_4, _b;
+            try {
+                for (var _c = __values(this.entries()), _d = _c.next(); !_d.done; _d = _c.next()) {
+                    var _e = __read(_d.value, 2), key = _e[0], value = _e[1];
+                    cb(value, key, this);
+                }
+            }
+            catch (e_4_1) { e_4 = { error: e_4_1 }; }
+            finally {
+                try {
+                    if (_d && !_d.done && (_b = _c.return)) _b.call(_c);
+                }
+                finally { if (e_4) throw e_4.error; }
+            }
+        };
+        return MichelsonMap;
+    }());
+    _a = michelsonMapTypeSymbol;
 
     var TokenValidationError = /** @class */ (function () {
         function TokenValidationError(value, token, baseMessage) {
@@ -170,245 +424,6 @@
         return ComparableToken;
     }(Token));
 
-    var isMapType = function (value) {
-        return 'args' in value && Array.isArray(value.args) && value.args.length === 2;
-    };
-    var MapTypecheckError = /** @class */ (function () {
-        function MapTypecheckError(value, type, errorType) {
-            this.value = value;
-            this.type = type;
-            this.name = 'MapTypecheckError';
-            this.message = errorType + " not compliant with underlying michelson type";
-        }
-        return MapTypecheckError;
-    }());
-    /**
-     * @description Michelson Map is an abstraction over the michelson native map. It supports complex Pair as key
-     */
-    var MichelsonMap = /** @class */ (function () {
-        /**
-         * @param mapType If specified key and value will be type-checked before being added to the map
-         *
-         * @example new MichelsonMap({ prim: "map", args: [{prim: "string"}, {prim: "int"}]})
-         */
-        function MichelsonMap(mapType) {
-            this.valueMap = new Map();
-            this.keyMap = new Map();
-            if (mapType) {
-                this.setType(mapType);
-            }
-        }
-        MichelsonMap.prototype.setType = function (mapType) {
-            if (!isMapType(mapType)) {
-                throw new Error('mapType is not a valid michelson map type');
-            }
-            this.keySchema = new Schema(mapType.args[0]);
-            this.valueSchema = new Schema(mapType.args[1]);
-        };
-        MichelsonMap.prototype.removeType = function () {
-            this.keySchema = undefined;
-            this.valueSchema = undefined;
-        };
-        MichelsonMap.fromLiteral = function (obj, mapType) {
-            var map = new MichelsonMap(mapType);
-            Object.keys(obj).forEach(function (key) {
-                map.set(key, obj[key]);
-            });
-            return map;
-        };
-        MichelsonMap.prototype.typecheckKey = function (key) {
-            if (this.keySchema) {
-                return this.keySchema.Typecheck(key);
-            }
-            return true;
-        };
-        MichelsonMap.prototype.typecheckValue = function (value) {
-            if (this.valueSchema) {
-                return this.valueSchema.Typecheck(value);
-            }
-            return true;
-        };
-        MichelsonMap.prototype.assertTypecheckValue = function (value) {
-            if (!this.typecheckValue(value)) {
-                throw new MapTypecheckError(value, this.valueSchema, 'value');
-            }
-        };
-        MichelsonMap.prototype.assertTypecheckKey = function (key) {
-            if (!this.typecheckKey(key)) {
-                throw new MapTypecheckError(key, this.keySchema, 'key');
-            }
-        };
-        MichelsonMap.prototype.serializeDeterministically = function (key) {
-            return stringify(key);
-        };
-        MichelsonMap.prototype.keys = function () {
-            var _a, _b, _c, key, e_1_1;
-            var e_1, _d;
-            return __generator(this, function (_e) {
-                switch (_e.label) {
-                    case 0:
-                        _e.trys.push([0, 5, 6, 7]);
-                        _a = __values(this.entries()), _b = _a.next();
-                        _e.label = 1;
-                    case 1:
-                        if (!!_b.done) return [3 /*break*/, 4];
-                        _c = __read(_b.value, 1), key = _c[0];
-                        return [4 /*yield*/, key];
-                    case 2:
-                        _e.sent();
-                        _e.label = 3;
-                    case 3:
-                        _b = _a.next();
-                        return [3 /*break*/, 1];
-                    case 4: return [3 /*break*/, 7];
-                    case 5:
-                        e_1_1 = _e.sent();
-                        e_1 = { error: e_1_1 };
-                        return [3 /*break*/, 7];
-                    case 6:
-                        try {
-                            if (_b && !_b.done && (_d = _a.return)) _d.call(_a);
-                        }
-                        finally { if (e_1) throw e_1.error; }
-                        return [7 /*endfinally*/];
-                    case 7: return [2 /*return*/];
-                }
-            });
-        };
-        MichelsonMap.prototype.values = function () {
-            var _a, _b, _c, value, e_2_1;
-            var e_2, _d;
-            return __generator(this, function (_e) {
-                switch (_e.label) {
-                    case 0:
-                        _e.trys.push([0, 5, 6, 7]);
-                        _a = __values(this.entries()), _b = _a.next();
-                        _e.label = 1;
-                    case 1:
-                        if (!!_b.done) return [3 /*break*/, 4];
-                        _c = __read(_b.value, 2), value = _c[1];
-                        return [4 /*yield*/, value];
-                    case 2:
-                        _e.sent();
-                        _e.label = 3;
-                    case 3:
-                        _b = _a.next();
-                        return [3 /*break*/, 1];
-                    case 4: return [3 /*break*/, 7];
-                    case 5:
-                        e_2_1 = _e.sent();
-                        e_2 = { error: e_2_1 };
-                        return [3 /*break*/, 7];
-                    case 6:
-                        try {
-                            if (_b && !_b.done && (_d = _a.return)) _d.call(_a);
-                        }
-                        finally { if (e_2) throw e_2.error; }
-                        return [7 /*endfinally*/];
-                    case 7: return [2 /*return*/];
-                }
-            });
-        };
-        MichelsonMap.prototype.entries = function () {
-            var _a, _b, key, e_3_1;
-            var e_3, _c;
-            return __generator(this, function (_d) {
-                switch (_d.label) {
-                    case 0:
-                        _d.trys.push([0, 5, 6, 7]);
-                        _a = __values(this.valueMap.keys()), _b = _a.next();
-                        _d.label = 1;
-                    case 1:
-                        if (!!_b.done) return [3 /*break*/, 4];
-                        key = _b.value;
-                        return [4 /*yield*/, [this.keyMap.get(key), this.valueMap.get(key)]];
-                    case 2:
-                        _d.sent();
-                        _d.label = 3;
-                    case 3:
-                        _b = _a.next();
-                        return [3 /*break*/, 1];
-                    case 4: return [3 /*break*/, 7];
-                    case 5:
-                        e_3_1 = _d.sent();
-                        e_3 = { error: e_3_1 };
-                        return [3 /*break*/, 7];
-                    case 6:
-                        try {
-                            if (_b && !_b.done && (_c = _a.return)) _c.call(_a);
-                        }
-                        finally { if (e_3) throw e_3.error; }
-                        return [7 /*endfinally*/];
-                    case 7: return [2 /*return*/];
-                }
-            });
-        };
-        MichelsonMap.prototype.get = function (key) {
-            this.assertTypecheckKey(key);
-            var strKey = this.serializeDeterministically(key);
-            return this.valueMap.get(strKey);
-        };
-        /**
-         *
-         * @description Set a key and a value in the MichelsonMap. If the key already exists, override the current value.
-         *
-         * @example map.set("myKey", "myValue") // Using a string as key
-         *
-         * @example map.set({0: "test", 1: "test1"}, "myValue") // Using a pair as key
-         *
-         * @warn The same key can be represented in multiple ways, depending on the type of the key. This duplicate key situation will cause a runtime error (duplicate key) when sending the map data to the Tezos RPC node.
-         *
-         * For example, consider a contract with a map whose key is of type boolean.  If you set the following values in MichelsonMap: map.set(false, "myValue") and map.set(null, "myValue").
-         *
-         * You will get two unique entries in the MichelsonMap. These values will both be evaluated as falsy by the MichelsonEncoder and ultimately rejected by the Tezos RPC.
-         */
-        MichelsonMap.prototype.set = function (key, value) {
-            this.assertTypecheckKey(key);
-            this.assertTypecheckValue(value);
-            var strKey = this.serializeDeterministically(key);
-            this.keyMap.set(strKey, key);
-            this.valueMap.set(strKey, value);
-        };
-        MichelsonMap.prototype.delete = function (key) {
-            this.assertTypecheckKey(key);
-            this.keyMap.delete(this.serializeDeterministically(key));
-            this.valueMap.delete(this.serializeDeterministically(key));
-        };
-        MichelsonMap.prototype.has = function (key) {
-            this.assertTypecheckKey(key);
-            var strKey = this.serializeDeterministically(key);
-            return this.keyMap.has(strKey) && this.valueMap.has(strKey);
-        };
-        MichelsonMap.prototype.clear = function () {
-            this.keyMap.clear();
-            this.valueMap.clear();
-        };
-        Object.defineProperty(MichelsonMap.prototype, "size", {
-            get: function () {
-                return this.keyMap.size;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        MichelsonMap.prototype.forEach = function (cb) {
-            var e_4, _a;
-            try {
-                for (var _b = __values(this.entries()), _c = _b.next(); !_c.done; _c = _b.next()) {
-                    var _d = __read(_c.value, 2), key = _d[0], value = _d[1];
-                    cb(value, key, this);
-                }
-            }
-            catch (e_4_1) { e_4 = { error: e_4_1 }; }
-            finally {
-                try {
-                    if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
-                }
-                finally { if (e_4) throw e_4.error; }
-            }
-        };
-        return MichelsonMap;
-    }());
-
     var BigMapValidationError = /** @class */ (function (_super) {
         __extends(BigMapValidationError, _super);
         function BigMapValidationError(value, token, message) {
@@ -433,14 +448,14 @@
             get: function () {
                 return this.createToken(this.val.args[1], 0);
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(BigMapToken.prototype, "KeySchema", {
             get: function () {
                 return this.createToken(this.val.args[0], 0);
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         BigMapToken.prototype.ExtractSchema = function () {
@@ -450,7 +465,7 @@
                 _a;
         };
         BigMapToken.prototype.isValid = function (value) {
-            if (value instanceof MichelsonMap) {
+            if (MichelsonMap.isMichelsonMap(value)) {
                 return null;
             }
             return new BigMapValidationError(value, this, 'Value must be a MichelsonMap');
@@ -852,7 +867,7 @@
             return _this;
         }
         NatToken.prototype.Execute = function (val) {
-            return new BigNumber(val[Object.keys(val)[0]]);
+            return new BigNumber__default['default'](val[Object.keys(val)[0]]);
         };
         NatToken.prototype.Encode = function (args) {
             var val = args.pop();
@@ -863,7 +878,7 @@
             return { int: String(val).toString() };
         };
         NatToken.prototype.isValid = function (val) {
-            var bigNumber = new BigNumber(val);
+            var bigNumber = new BigNumber__default['default'](val);
             if (bigNumber.isNaN()) {
                 return new NatValidationError(val, this, "Value is not a number: " + val);
             }
@@ -1046,18 +1061,18 @@
             get: function () {
                 return this.createToken(this.val.args[1], 0);
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(MapToken.prototype, "KeySchema", {
             get: function () {
                 return this.createToken(this.val.args[0], 0);
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         MapToken.prototype.isValid = function (value) {
-            if (value instanceof MichelsonMap) {
+            if (MichelsonMap.isMichelsonMap(value)) {
                 return null;
             }
             return new MapValidationError(value, this, 'Value must be a MichelsonMap');
@@ -1300,13 +1315,13 @@
             return _this;
         }
         MutezToken.prototype.Execute = function (val) {
-            return new BigNumber(val[Object.keys(val)[0]]);
+            return new BigNumber__default['default'](val[Object.keys(val)[0]]);
         };
         MutezToken.prototype.ExtractSchema = function () {
             return MutezToken.prim;
         };
         MutezToken.prototype.isValid = function (val) {
-            var bigNumber = new BigNumber(val);
+            var bigNumber = new BigNumber__default['default'](val);
             if (bigNumber.isNaN()) {
                 return new MutezValidationError(val, this, "Value is not a number: " + val);
             }
@@ -1430,8 +1445,11 @@
         OptionToken.prototype.Encode = function (args) {
             var value = args;
             if (value === undefined ||
-                value === null ||
-                (Array.isArray(value) && (value[0] === undefined || value[0] === null))) {
+                value === null) {
+                return { prim: 'None' };
+            }
+            else if ((Array.isArray(value) && (value[value.length - 1] === undefined || value[value.length - 1] === null))) {
+                value.pop();
                 return { prim: 'None' };
             }
             var schema = this.createToken(this.val.args[0], 0);
@@ -1527,13 +1545,13 @@
             return _this;
         }
         IntToken.prototype.Execute = function (val) {
-            return new BigNumber(val[Object.keys(val)[0]]);
+            return new BigNumber__default['default'](val[Object.keys(val)[0]]);
         };
         IntToken.prototype.ExtractSchema = function () {
             return IntToken.prim;
         };
         IntToken.prototype.isValid = function (val) {
-            var bigNumber = new BigNumber(val);
+            var bigNumber = new BigNumber__default['default'](val);
             if (bigNumber.isNaN()) {
                 return new IntValidationError(val, this, "Value is not a number: " + val);
             }
@@ -1857,7 +1875,7 @@
             get: function () {
                 return this.createToken(this.val.args[0], 0);
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         SetToken.prototype.isValid = function (value) {
@@ -2008,11 +2026,14 @@
         return new t(val, idx, createToken);
     }
 
+    var _a$1;
+    var schemaTypeSymbol = Symbol.for('taquito-schema-type-symbol');
     /**
      * @warn Our current smart contract abstraction feature is currently in preview. It's API is not final, and it may not cover every use case (yet). We will greatly appreciate any feedback on this feature.
      */
     var Schema = /** @class */ (function () {
         function Schema(val) {
+            this[_a$1] = true;
             this.root = createToken(val, 0);
             if (this.root instanceof BigMapToken) {
                 this.bigMap = this.root;
@@ -2024,6 +2045,9 @@
                 }
             }
         }
+        Schema.isSchema = function (obj) {
+            return obj && obj[schemaTypeSymbol] === true;
+        };
         Schema.fromRPCResponse = function (val) {
             var storage = val &&
                 val.script &&
@@ -2066,8 +2090,8 @@
             if (!Array.isArray(diff)) {
                 throw new Error('Invalid big map diff. It must be an array');
             }
-            var eltFormat = diff.map(function (_a) {
-                var key = _a.key, value = _a.value;
+            var eltFormat = diff.map(function (_b) {
+                var key = _b.key, value = _b.value;
                 return ({ args: [key, value] });
             });
             return this.bigMap.Execute(eltFormat, semantics);
@@ -2107,7 +2131,7 @@
          * @deprecated
          */
         Schema.prototype.ComputeState = function (tx, state) {
-            var _a;
+            var _b;
             var _this = this;
             if (!this.bigMap) {
                 throw new Error('No big map schema');
@@ -2115,10 +2139,11 @@
             var bigMap = tx.reduce(function (prev, current) {
                 return __assign(__assign({}, prev), _this.ExecuteOnBigMapDiff(current.contents[0].metadata.operation_result.big_map_diff));
             }, {});
-            return __assign(__assign({}, this.Execute(state)), (_a = {}, _a[this.bigMap.annot()] = bigMap, _a));
+            return __assign(__assign({}, this.Execute(state)), (_b = {}, _b[this.bigMap.annot()] = bigMap, _b));
         };
         return Schema;
     }());
+    _a$1 = schemaTypeSymbol;
 
     /**
      * @warn Our current smart contract abstraction feature is currently in preview. It's API is not final, and it may not cover every use case (yet). We will greatly appreciate any feedback on this feature.
@@ -2142,7 +2167,7 @@
                 return (this.root instanceof OrToken ||
                     (this.root instanceof OptionToken && this.root.subToken() instanceof OrToken));
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         Object.defineProperty(ParameterSchema.prototype, "hasAnnotation", {
@@ -2154,7 +2179,7 @@
                     return true;
                 }
             },
-            enumerable: true,
+            enumerable: false,
             configurable: true
         });
         ParameterSchema.prototype.Execute = function (val, semantics) {

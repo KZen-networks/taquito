@@ -1,7 +1,7 @@
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('buffer')) :
   typeof define === 'function' && define.amd ? define(['exports', 'buffer'], factory) :
-  (global = global || self, factory(global.taquitoUtils = {}, global.buffer));
+  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.taquitoUtils = {}, global.buffer));
 }(this, (function (exports, buffer) { 'use strict';
 
   var _a, _b;
@@ -89,18 +89,18 @@
       _b);
 
   /*! *****************************************************************************
-  Copyright (c) Microsoft Corporation. All rights reserved.
-  Licensed under the Apache License, Version 2.0 (the "License"); you may not use
-  this file except in compliance with the License. You may obtain a copy of the
-  License at http://www.apache.org/licenses/LICENSE-2.0
+  Copyright (c) Microsoft Corporation.
 
-  THIS CODE IS PROVIDED ON AN *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-  KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
-  WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
-  MERCHANTABLITY OR NON-INFRINGEMENT.
+  Permission to use, copy, modify, and/or distribute this software for any
+  purpose with or without fee is hereby granted.
 
-  See the Apache Version 2.0 License for specific language governing permissions
-  and limitations under the License.
+  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+  REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+  AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+  INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+  LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+  OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+  PERFORMANCE OF THIS SOFTWARE.
   ***************************************************************************** */
 
   function __read(o, n) {
@@ -139,6 +139,16 @@
       }
       return value in prefix;
   }
+  /**
+   * @description This function is called by the validation functions ([[validateAddress]], [[validateChain]], [[validateContractAddress]], [[validateKeyHash]], [[validateSignature]], [[validatePublicKey]]).
+   * Verify if the value has the right prefix or return `NO_PREFIX_MATCHED`,
+   * decode the value using base58 and return `INVALID_CHECKSUM` if it fails,
+   * check if the length of the value matches the prefix type or return `INVALID_LENGTH`.
+   * If all checks pass, return `VALID`.
+   *
+   * @param value Value to validate
+   * @param prefixes prefix the value should have
+   */
   function validatePrefixedValue(value, prefixes) {
       var match = new RegExp("^(" + prefixes.join('|') + ")").exec(value);
       if (!match || match.length === 0) {
@@ -163,21 +173,111 @@
   var contractPrefix = [exports.Prefix.KT1];
   var signaturePrefix = [exports.Prefix.EDSIG, exports.Prefix.P2SIG, exports.Prefix.SPSIG, exports.Prefix.SIG];
   var pkPrefix = [exports.Prefix.EDPK, exports.Prefix.SPPK, exports.Prefix.P2PK];
+  /**
+   * @description Used to check if an address or a contract address is valid.
+   *
+   * @returns
+   * 0 (NO_PREFIX_MATCHED), 1 (INVALID_CHECKSUM), 2 (INVALID_LENGTH) or 3 (VALID).
+   *
+   * @example
+   * ```
+   * import { validateAddress } from '@taquito/utils';
+   * const pkh = 'tz1L9r8mWmRPndRhuvMCWESLGSVeFzQ9NAWx'
+   * const validation = validateAddress(pkh)
+   * console.log(validation)
+   * // This example return 3 which correspond to VALID
+   * ```
+   */
   function validateAddress(value) {
       return validatePrefixedValue(value, __spread(implicitPrefix, contractPrefix));
   }
+  /**
+   * @description Used to check if a chain id is valid.
+   *
+   * @returns
+   * 0 (NO_PREFIX_MATCHED), 1 (INVALID_CHECKSUM), 2 (INVALID_LENGTH) or 3 (VALID).
+   *
+   * @example
+   * ```
+   * import { validateChain } from '@taquito/utils';
+   * const chainId = 'NetXdQprcVkpaWU'
+   * const validation = validateChain(chainId)
+   * console.log(validation)
+   * // This example return 3 which correspond to VALID
+   * ```
+   */
   function validateChain(value) {
       return validatePrefixedValue(value, [exports.Prefix.NET]);
   }
+  /**
+   * @description Used to check if a contract address is valid.
+   *
+   * @returns
+   * 0 (NO_PREFIX_MATCHED), 1 (INVALID_CHECKSUM), 2 (INVALID_LENGTH) or 3 (VALID).
+   *
+   * @example
+   * ```
+   * import { validateContractAddress } from '@taquito/utils';
+   * const contractAddress = 'KT1JVErLYTgtY8uGGZ4mso2npTSxqVLDRVbC'
+   * const validation = validateContractAddress(contractAddress)
+   * console.log(validation)
+   * // This example return 3 which correspond to VALID
+   * ```
+   */
   function validateContractAddress(value) {
       return validatePrefixedValue(value, contractPrefix);
   }
+  /**
+   * @description Used to check if a key hash is valid.
+   *
+   * @returns
+   * 0 (NO_PREFIX_MATCHED), 1 (INVALID_CHECKSUM), 2 (INVALID_LENGTH) or 3 (VALID).
+   *
+   * @example
+   * ```
+   * import { validateKeyHash } from '@taquito/utils';
+   * const keyHashWithoutPrefix = '1L9r8mWmRPndRhuvMCWESLGSVeFzQ9NAWx'
+   * const validation = validateKeyHash(keyHashWithoutPrefix)
+   * console.log(validation)
+   * // This example return 0 which correspond to NO_PREFIX_MATCHED
+   * ```
+   */
   function validateKeyHash(value) {
       return validatePrefixedValue(value, implicitPrefix);
   }
+  /**
+   * @description Used to check if a signature is valid.
+   *
+   * @returns
+   * 0 (NO_PREFIX_MATCHED), 1 (INVALID_CHECKSUM), 2 (INVALID_LENGTH) or 3 (VALID).
+   *
+   * @example
+   * ```
+   * import { validateSignature } from '@taquito/utils';
+   * const signature = 'edsigtkpiSSschcaCt9pUVrpNPf7TTcgvgDEDD6NCEHMy8NNQJCGnMfLZzYoQj74yLjo9wx6MPVV29CvVzgi7qEcEUok3k7AuMg'
+   * const validation = validateSignature(signature)
+   * console.log(validation)
+   * // This example return 3 which correspond to VALID
+   * ```
+   */
   function validateSignature(value) {
       return validatePrefixedValue(value, signaturePrefix);
   }
+  /**
+   * @description Used to check if a signature is valid.
+   *
+   * @returns
+   * 0 (NO_PREFIX_MATCHED), 1 (INVALID_CHECKSUM), 2 (INVALID_LENGTH) or 3 (VALID).
+   *
+   * @example
+   * ```
+   * import { validatePublicKey } from '@taquito/utils';
+   * const publicKey = 'edsigtkpiSSschcaCt9pUVrpNPf7TTcgvgDEDD6NCEHMy8NNQJCGnMfLZzYoQj74yLjo9wx6MPVV29CvVzgi7qEcEUok3k7AuMg'
+   * const validation = validatePublicKey(publicKey)
+   * console.log(validation)
+   * // This example return 3 which correspond to VALID
+   * ```
+   */
   function validatePublicKey(value) {
       return validatePrefixedValue(value, pkPrefix);
   }
@@ -189,6 +289,12 @@
    */
   var blake = require('blakejs');
   var bs58check$1 = require('bs58check');
+  /**
+   *
+   * @description Hash a string using the BLAKE2b algorithm, base58 encode the hash obtained and appends the prefix 'expr' to it
+   *
+   * @param value Value in hex
+   */
   function encodeExpr(value) {
       var blakeHash = blake.blake2b(hex2buf(value), null, 32);
       return b58cencode(blakeHash, prefix['expr']);
@@ -259,6 +365,12 @@
       }
       return b58cencode(value.substring(2, 42), prefix.KT);
   }
+  /**
+   *
+   * @description Base58 encode a key according to its prefix
+   *
+   * @param value Key to base58 encode
+   */
   function encodeKey(value) {
       if (value[0] === '0') {
           var pref = {
@@ -269,6 +381,12 @@
           return b58cencode(value.substring(2), pref[value.substring(0, 2)]);
       }
   }
+  /**
+   *
+   * @description Base58 encode a key hash according to its prefix
+   *
+   * @param value Key to base58 encode
+   */
   function encodeKeyHash(value) {
       if (value[0] === '0') {
           var pref = {
@@ -290,20 +408,6 @@
   };
   /**
    *
-   * @description Generate a random hex nonce
-   *
-   * @param length length of the nonce
-   */
-  var hexNonce = function (length) {
-      var chars = '0123456789abcedf';
-      var hex = '';
-      while (length--) {
-          hex += chars[(Math.random() * 16) | 0];
-      }
-      return hex;
-  };
-  /**
-   *
    * @description Merge 2 buffers together
    *
    * @param b1 First buffer
@@ -314,81 +418,6 @@
       r.set(b1);
       r.set(b2, b1.length);
       return r;
-  };
-  /**
-   *
-   * @description Convert a michelson string expression to it's json representation
-   *
-   * @param mi Michelson string expression to convert to json
-   */
-  var sexp2mic = function me(mi) {
-      mi = mi
-          .replace(/(?:@[a-z_]+)|(?:#.*$)/gm, '')
-          .replace(/\s+/g, ' ')
-          .trim();
-      if (mi.charAt(0) === '(')
-          mi = mi.slice(1, -1);
-      var pl = 0;
-      var sopen = false;
-      var escaped = false;
-      var ret = {
-          prim: '',
-          args: [],
-      };
-      var val = '';
-      for (var i = 0; i < mi.length; i++) {
-          if (escaped) {
-              val += mi[i];
-              escaped = false;
-              continue;
-          }
-          else if ((i === mi.length - 1 && sopen === false) ||
-              (mi[i] === ' ' && pl === 0 && sopen === false)) {
-              if (i === mi.length - 1)
-                  val += mi[i];
-              if (val) {
-                  if (val === parseInt(val, 10).toString()) {
-                      if (!ret.prim)
-                          return { int: val };
-                      ret.args.push({ int: val });
-                  }
-                  else if (val[0] === '0' && val[1] === 'x') {
-                      val = val.substr(2);
-                      if (!ret.prim)
-                          return { bytes: val };
-                      ret.args.push({ bytes: val });
-                  }
-                  else if (ret.prim) {
-                      ret.args.push(me(val));
-                  }
-                  else {
-                      ret.prim = val;
-                  }
-                  val = '';
-              }
-              continue;
-          }
-          else if (mi[i] === '"' && sopen) {
-              sopen = false;
-              if (!ret.prim)
-                  return { string: val };
-              ret.args.push({ string: val });
-              val = '';
-              continue;
-          }
-          else if (mi[i] === '"' && !sopen && pl === 0) {
-              sopen = true;
-              continue;
-          }
-          else if (mi[i] === '\\')
-              escaped = true;
-          else if (mi[i] === '(')
-              pl++;
-          else if (mi[i] === ')')
-              pl--;
-          val += mi[i];
-      }
-      return ret;
   };
   /**
    *
@@ -448,88 +477,6 @@
   };
   /**
    *
-   * @description Convert a michelson string to it's json representation
-   *
-   * @param mi Michelson string to convert to json
-   *
-   * @warn This implementation of the Michelson parser is a prototype. The current implementation is naïve. We are likely going to switch to using the Nomadic Michelson encoder in the future, as per Issue https://gitlab.com/tezos/tezos/issues/581
-   */
-  var ml2mic = function me(mi) {
-      var ret = [];
-      var inseq = false;
-      var seq = '';
-      var val = '';
-      var pl = 0;
-      var bl = 0;
-      var sopen = false;
-      var escaped = false;
-      for (var i = 0; i < mi.length; i++) {
-          if (val === '}' || val === ';') {
-              val = '';
-          }
-          if (inseq) {
-              if (mi[i] === '}') {
-                  bl--;
-              }
-              else if (mi[i] === '{') {
-                  bl++;
-              }
-              if (bl === 0) {
-                  var st = me(val);
-                  ret.push({
-                      prim: seq.trim(),
-                      args: [st],
-                  });
-                  val = '';
-                  bl = 0;
-                  inseq = false;
-              }
-          }
-          else if (mi[i] === '{') {
-              bl++;
-              seq = val;
-              val = '';
-              inseq = true;
-              continue;
-          }
-          else if (escaped) {
-              val += mi[i];
-              escaped = false;
-              continue;
-          }
-          else if ((i === mi.length - 1 && sopen === false) ||
-              (mi[i] === ';' && pl === 0 && sopen === false)) {
-              if (i === mi.length - 1)
-                  val += mi[i];
-              if (val.trim() === '' || val.trim() === '}' || val.trim() === ';') {
-                  val = '';
-                  continue;
-              }
-              ret.push(sexp2mic(val));
-              val = '';
-              continue;
-          }
-          else if (mi[i] === '"' && sopen) {
-              sopen = false;
-          }
-          else if (mi[i] === '"' && !sopen) {
-              sopen = true;
-          }
-          else if (mi[i] === '\\') {
-              escaped = true;
-          }
-          else if (mi[i] === '(') {
-              pl++;
-          }
-          else if (mi[i] === ')') {
-              pl--;
-          }
-          val += mi[i];
-      }
-      return ret;
-  };
-  /**
-   *
    * @description Convert a buffer to an hex string
    *
    * @param buffer Buffer to convert
@@ -554,14 +501,11 @@
   exports.encodeKeyHash = encodeKeyHash;
   exports.encodePubKey = encodePubKey;
   exports.hex2buf = hex2buf;
-  exports.hexNonce = hexNonce;
   exports.isValidPrefix = isValidPrefix;
   exports.mergebuf = mergebuf;
   exports.mic2arr = mic2arr;
-  exports.ml2mic = ml2mic;
   exports.prefix = prefix;
   exports.prefixLength = prefixLength;
-  exports.sexp2mic = sexp2mic;
   exports.validateAddress = validateAddress;
   exports.validateChain = validateChain;
   exports.validateContractAddress = validateContractAddress;

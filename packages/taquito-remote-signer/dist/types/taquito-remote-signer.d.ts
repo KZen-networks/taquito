@@ -1,9 +1,16 @@
 import { HttpBackend } from '@taquito/http-utils';
-export declare class RemoteSigner {
+import { Signer } from '@taquito/taquito';
+export interface RemoteSignerOptions {
+    headers?: {
+        [key: string]: string;
+    };
+}
+export declare class RemoteSigner implements Signer {
     private pkh;
     private rootUrl;
+    private options;
     private http;
-    constructor(pkh: string, rootUrl: string, http?: HttpBackend);
+    constructor(pkh: string, rootUrl: string, options?: RemoteSignerOptions, http?: HttpBackend);
     publicKeyHash(): Promise<string>;
     private createURL;
     publicKey(): Promise<string>;
@@ -14,4 +21,5 @@ export declare class RemoteSigner {
         prefixSig: string;
         sbytes: string;
     }>;
+    verify(bytes: string, signature: string): Promise<boolean>;
 }
