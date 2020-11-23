@@ -10,6 +10,16 @@ var __assign = (this && this.__assign) || function () {
     };
     return __assign.apply(this, arguments);
 };
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -58,12 +68,13 @@ var __rest = (this && this.__rest) || function (s, e) {
     return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.RpcClient = exports.OpKind = void 0;
 var http_utils_1 = require("@taquito/http-utils");
 var bignumber_js_1 = require("bignumber.js");
 var utils_1 = require("./utils/utils");
+__exportStar(require("./types"), exports);
 var opkind_1 = require("./opkind");
-exports.OpKind = opkind_1.OpKind;
-var defaultRPC = 'https://mainnet.tezrpc.me';
+Object.defineProperty(exports, "OpKind", { enumerable: true, get: function () { return opkind_1.OpKind; } });
 var defaultChain = 'main';
 var defaultRPCOptions = { block: 'head' };
 /***
@@ -72,15 +83,14 @@ var defaultRPCOptions = { block: 'head' };
 var RpcClient = /** @class */ (function () {
     /**
      *
-     * @param url rpc root url (default https://mainnet.tezrpc.me)
+     * @param url rpc root url
      * @param chain chain (default main)
      * @param httpBackend Http backend that issue http request.
      * You can override it by providing your own if you which to hook in the request/response
      *
-     * @example new RpcClient('https://mainnet.tezrpc.me', 'main') this will use https://mainnet.tezrpc.me/chains/main
+     * @example new RpcClient('https://api.tez.ie/rpc/mainnet', 'main') this will use https://api.tez.ie/rpc/mainnet/chains/main
      */
     function RpcClient(url, chain, httpBackend) {
-        if (url === void 0) { url = defaultRPC; }
         if (chain === void 0) { chain = defaultChain; }
         if (httpBackend === void 0) { httpBackend = new http_utils_1.HttpBackend(); }
         this.url = url;
@@ -112,6 +122,31 @@ var RpcClient = /** @class */ (function () {
                     case 1:
                         hash = _b.sent();
                         return [2 /*return*/, hash];
+                }
+            });
+        });
+    };
+    /**
+     *
+     * @param options contains generic configuration for rpc calls
+     *
+     * @description List the ancestors of the given block which, if referred to as the branch in an operation header, are recent enough for that operation to be included in the current block.
+     *
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-live-blocks
+     */
+    RpcClient.prototype.getLiveBlocks = function (_a) {
+        var block = (_a === void 0 ? defaultRPCOptions : _a).block;
+        return __awaiter(this, void 0, void 0, function () {
+            var blocks;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0: return [4 /*yield*/, this.httpBackend.createRequest({
+                            url: this.createURL("/chains/" + this.chain + "/blocks/" + block + "/live_blocks"),
+                            method: 'GET',
+                        })];
+                    case 1:
+                        blocks = _b.sent();
+                        return [2 /*return*/, blocks];
                 }
             });
         });
@@ -255,7 +290,9 @@ var RpcClient = /** @class */ (function () {
      *
      * @description Access the value associated with a key in the big map storage of the contract.
      *
-     * @see https://tezos.gitlab.io/api/rpc.html#post-block-id-context-contracts-contract-id-big-map-get
+     * @deprecated Deprecated in favor of getBigMapKeyByID
+     *
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-contracts-contract-id-script
      */
     RpcClient.prototype.getBigMapKey = function (address, key, _a) {
         var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -353,12 +390,16 @@ var RpcClient = /** @class */ (function () {
                             'hard_gas_limit_per_block',
                             'proof_of_work_threshold',
                             'tokens_per_roll',
+                            'seed_nonce_revelation_tip',
                             'block_security_deposit',
                             'endorsement_security_deposit',
                             'block_reward',
                             'endorsement_reward',
                             'cost_per_byte',
                             'hard_storage_limit_per_operation',
+                            'test_chain_duration',
+                            'baking_reward_per_endorsement',
+                            'delay_per_missing_endorsement'
                         ]);
                         return [2 /*return*/, __assign(__assign({}, response), castedResponse)];
                 }
@@ -367,11 +408,14 @@ var RpcClient = /** @class */ (function () {
     };
     /**
      *
-     * @param options contains generic configuration for rpc calls
+     * @param options contains generic configuration for rpc calls. See examples for various available sytaxes.
      *
      * @description All the information about a block
      *
      * @see https://tezos.gitlab.io/api/rpc.html#get-block-id
+     * @example getBlock() will default to /main/chains/block/head.
+     * @example getBlock({ block: head~2 }) will return an offset of 2 blocks.
+     * @example getBlock({ block: BL8fTiWcSxWCjiMVnDkbh6EuhqVPZzgWheJ2dqwrxYRm9AephXh~2 }) will return an offset of 2 blocks from given block hash..
      */
     RpcClient.prototype.getBlock = function (_a) {
         var block = (_a === void 0 ? defaultRPCOptions : _a).block;
@@ -828,6 +872,13 @@ var RpcClient = /** @class */ (function () {
                 }
             });
         });
+    };
+    /**
+     *
+     * @description Return rpc root url
+     */
+    RpcClient.prototype.getRpcUrl = function () {
+        return this.url;
     };
     return RpcClient;
 }());

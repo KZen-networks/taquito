@@ -1,7 +1,7 @@
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
   typeof define === 'function' && define.amd ? define(['exports'], factory) :
-  (global = global || self, factory(global.taquitoHttpUtils = {}));
+  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.taquitoHttpUtils = {}));
 }(this, (function (exports) { 'use strict';
 
   /**
@@ -323,13 +323,18 @@
       STATUS_CODE[STATUS_CODE["NETWORK_AUTHENTICATION_REQUIRED"] = 511] = "NETWORK_AUTHENTICATION_REQUIRED";
   })(exports.STATUS_CODE || (exports.STATUS_CODE = {}));
 
+  // tslint:disable: strict-type-predicates
+  var isNode = typeof process !== 'undefined' && process.versions != null && process.versions.node != null;
+  // tslint:enable: strict-type-predicates
+  var XMLHttpRequestCTOR = isNode ? require('xhr2-cookies').XMLHttpRequest : XMLHttpRequest;
   var defaultTimeout = 30000;
   var HttpResponseError = /** @class */ (function () {
-      function HttpResponseError(message, status, statusText, body) {
+      function HttpResponseError(message, status, statusText, body, url) {
           this.message = message;
           this.status = status;
           this.statusText = statusText;
           this.body = body;
+          this.url = url;
           this.name = 'HttpResponse';
       }
       return HttpResponseError;
@@ -383,19 +388,7 @@
           }
       };
       HttpBackend.prototype.createXHR = function () {
-          // tslint:disable: strict-type-predicates
-          if (typeof process !== 'undefined' &&
-              process.versions != null &&
-              process.versions.node != null
-          // tslint:enable: strict-type-predicates
-          ) {
-              var NodeXHR = require('xhr2-cookies').XMLHttpRequest;
-              var request = new NodeXHR();
-              return request;
-          }
-          else {
-              return new XMLHttpRequest();
-          }
+          return new XMLHttpRequestCTOR();
       };
       /**
        *
@@ -403,23 +396,31 @@
        */
       HttpBackend.prototype.createRequest = function (_a, data) {
           var _this = this;
-          var url = _a.url, method = _a.method, timeout = _a.timeout, query = _a.query;
+          var url = _a.url, method = _a.method, timeout = _a.timeout, query = _a.query, _b = _a.headers, headers = _b === void 0 ? {} : _b, _c = _a.json, json = _c === void 0 ? true : _c;
           return new Promise(function (resolve, reject) {
               var request = _this.createXHR();
               request.open(method || 'GET', "" + url + _this.serialize(query));
               request.setRequestHeader('Content-Type', 'application/json');
+              for (var k in headers) {
+                  request.setRequestHeader(k, headers[k]);
+              }
               request.timeout = timeout || defaultTimeout;
               request.onload = function () {
                   if (this.status >= 200 && this.status < 300) {
-                      try {
-                          resolve(JSON.parse(request.response));
+                      if (json) {
+                          try {
+                              resolve(JSON.parse(request.response));
+                          }
+                          catch (ex) {
+                              reject(new Error("Unable to parse response: " + request.response));
+                          }
                       }
-                      catch (ex) {
-                          reject(new Error("Unable to parse response: " + request.response));
+                      else {
+                          resolve(request.response);
                       }
                   }
                   else {
-                      reject(new HttpResponseError("Http error response: (" + this.status + ") " + request.response, this.status, request.statusText, request.response));
+                      reject(new HttpResponseError("Http error response: (" + this.status + ") " + request.response, this.status, request.statusText, request.response, url));
                   }
               };
               request.ontimeout = function () {

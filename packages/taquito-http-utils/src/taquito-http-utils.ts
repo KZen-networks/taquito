@@ -1,5 +1,12 @@
 import { STATUS_CODE } from './status_code';
 
+// tslint:disable: strict-type-predicates
+const isNode =
+  typeof process !== 'undefined' && process.versions != null && process.versions.node != null;
+// tslint:enable: strict-type-predicates
+
+const XMLHttpRequestCTOR = isNode ? require('xhr2-cookies').XMLHttpRequest : XMLHttpRequest;
+
 export * from './status_code';
 
 const defaultTimeout = 30000;
@@ -8,7 +15,9 @@ interface HttpRequestOptions {
   url: string;
   method?: 'GET' | 'POST';
   timeout?: number;
+  json?: boolean;
   query?: { [key: string]: any };
+  headers?: { [key: string]: string };
 }
 
 export class HttpResponseError implements Error {
@@ -18,7 +27,8 @@ export class HttpResponseError implements Error {
     public message: string,
     public status: STATUS_CODE,
     public statusText: string,
-    public body: string
+    public body: string,
+    public url: string
   ) {}
 }
 
@@ -67,37 +77,35 @@ export class HttpBackend {
   }
 
   private createXHR(): XMLHttpRequest {
-    // tslint:disable: strict-type-predicates
-    if (
-      typeof process !== 'undefined' &&
-      process.versions != null &&
-      process.versions.node != null
-      // tslint:enable: strict-type-predicates
-    ) {
-      const NodeXHR = require('xhr2-cookies').XMLHttpRequest;
-      const request = new NodeXHR();
-      return request;
-    } else {
-      return new XMLHttpRequest();
-    }
+    return new XMLHttpRequestCTOR();
   }
 
   /**
    *
    * @param options contains options to be passed for the HTTP request (url, method and timeout)
    */
-  createRequest<T>({ url, method, timeout, query }: HttpRequestOptions, data?: {}) {
+  createRequest<T>(
+    { url, method, timeout, query, headers = {}, json = true }: HttpRequestOptions,
+    data?: {}
+  ) {
     return new Promise<T>((resolve, reject) => {
       const request = this.createXHR();
       request.open(method || 'GET', `${url}${this.serialize(query)}`);
       request.setRequestHeader('Content-Type', 'application/json');
+      for (const k in headers) {
+        request.setRequestHeader(k, headers[k]);
+      }
       request.timeout = timeout || defaultTimeout;
       request.onload = function() {
         if (this.status >= 200 && this.status < 300) {
-          try {
-            resolve(JSON.parse(request.response));
-          } catch (ex) {
-            reject(new Error(`Unable to parse response: ${request.response}`));
+          if (json) {
+            try {
+              resolve(JSON.parse(request.response));
+            } catch (ex) {
+              reject(new Error(`Unable to parse response: ${request.response}`));
+            }
+          } else {
+            resolve(request.response);
           }
         } else {
           reject(
@@ -105,7 +113,8 @@ export class HttpBackend {
               `Http error response: (${this.status}) ${request.response}`,
               this.status as STATUS_CODE,
               request.statusText,
-              request.response
+              request.response,
+              url
             )
           );
         }

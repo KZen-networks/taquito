@@ -19,7 +19,7 @@ export declare class SetToken extends Token {
         args: any[];
         annots: any[];
     }, idx: number, fac: TokenFactory);
-    readonly KeySchema: ComparableToken;
+    get KeySchema(): ComparableToken;
     private isValid;
     Encode(args: any[]): any;
     Execute(val: any, semantics?: Semantic): any;

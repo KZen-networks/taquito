@@ -1,7 +1,8 @@
 const { delegate, getBalance, generateNewAccount, transfer, transferAll } = require('./index');
 const assert = require('assert');
 
-const network = 'carthagenet';
+// const network = 'carthagenet';
+const network = 'delphinet';
 
 const revealedAccount1 = {
   address: 'tz2MC3sfZJjbjXV4nv5KJPhEWgUStr9Yvanw',
@@ -14,7 +15,8 @@ const revealedAccount2 = {
 };
 
 // const delegateAddress = 'tz1PirboZKFVqkfE45hVLpkpXaZtLk3mqC17';  // Bablyonnet
-const delegateAddress = 'tz1VxS7ff4YnZRs8b4mMP4WaMVpoQjuo1rjf';  // Carthagenet
+// const delegateAddress = 'tz1VxS7ff4YnZRs8b4mMP4WaMVpoQjuo1rjf';  // Carthagenet
+const delegateAddress = 'tz1LpmZmB1yJJBcCrBDLSAStmmugGDEghdVv';  // Delphinet
 
 const MUTEZ_IN_TZ = 1000000;
 
@@ -163,7 +165,11 @@ describe('Tezos API tests', () => {
     await op.confirmation();
 
     const balanceAfterTransferAll = await getBalance(newImplicitAccount.address, network);
-    assert.strictEqual(balanceAfterTransferAll.toString(), '0');
+    /*
+     Emptying an account into a new implicit account is not possible:
+     https://github.com/ecadlabs/taquito/issues/496
+    */
+    assert.strictEqual(balanceAfterTransferAll.toString(), '1');
   }).timeout(200000);
 
   it('transfer all from revealed account to old implicit account', async () => {
@@ -238,7 +244,11 @@ describe('Tezos API tests', () => {
     await op.confirmation();
 
     const balanceAfterTransferAll = await getBalance(newImplicitAccount.address, network);
-    assert.strictEqual(balanceAfterTransferAll.toString(), '0');
+    /*
+     Emptying an account into a new implicit account is not possible:
+     https://github.com/ecadlabs/taquito/issues/496
+    */
+    assert.strictEqual(balanceAfterTransferAll.toString(), '1');
   }).timeout(200000);
 
   it('delegate with a small balance', async () => {
@@ -256,14 +266,16 @@ describe('Tezos API tests', () => {
     assert.strictEqual(balanceAfter.toString(), (0.003 * MUTEZ_IN_TZ).toString());
 
     // 2. delegate from the unrevealed account
-    const trackingId = 135;
-    op = await delegate(newImplicitAccount.privateKey, delegateAddress, network, 135);
+    const trackingId = network === 'mainnet' ? 135 : 0;
+    op = await delegate(newImplicitAccount.privateKey, delegateAddress, network, trackingId);
     assert.strictEqual(op.results.length, 2);  // with reveal
     assert.strictEqual(op.results[0].kind, 'reveal');
     assert.strictEqual(op.results[0].storage_limit, '0');
     assert.strictEqual(op.results[1].kind, 'delegation');
     assert.strictEqual(op.results[1].storage_limit, '0');
-    assert.strictEqual(op.results[1].gas_limit.toString().substr(op.results[1].gas_limit.length - 3, 3), trackingId.toString());
+    if (network === 'mainnet') {
+      assert.strictEqual(op.results[1].gas_limit.toString().substr(op.results[1].gas_limit.length - 3, 3), trackingId.toString());
+    }
 
     await op.confirmation();
   }).timeout(200000);
@@ -279,7 +291,7 @@ describe('Tezos API tests', () => {
     assert.strictEqual(balanceAfter.toString(), (0.1 * MUTEZ_IN_TZ).toString());
 
     // 2. delegate from the unrevealed account
-    op = await delegate(newImplicitAccount.privateKey, delegateAddress, network, 135);
+    op = await delegate(newImplicitAccount.privateKey, delegateAddress, network);
     await op.confirmation();
 
     // 3. transfer from the delegated address
@@ -306,7 +318,7 @@ describe('Tezos API tests', () => {
     assert.strictEqual(balanceAfter.toString(), (0.1 * MUTEZ_IN_TZ).toString());
 
     // 2. delegate from the unrevealed account
-    op = await delegate(newImplicitAccount.privateKey, delegateAddress, network, 135);
+    op = await delegate(newImplicitAccount.privateKey, delegateAddress, network);
     await op.confirmation();
 
     // 3. transfer from the delegated address

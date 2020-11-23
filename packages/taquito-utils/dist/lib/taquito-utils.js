@@ -4,19 +4,33 @@
  * Copyright (c) 2018 Andrew Kishino
  * Copyright (c) 2017 Stephen Andrews
  */
-function __export(m) {
-    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
-}
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.buf2hex = exports.mic2arr = exports.mergebuf = exports.hex2buf = exports.encodeKeyHash = exports.encodeKey = exports.encodePubKey = exports.b58decode = exports.b58cdecode = exports.b58cencode = exports.encodeExpr = exports.prefixLength = exports.Prefix = exports.prefix = void 0;
 var buffer_1 = require("buffer");
 var constants_1 = require("./constants");
 var blake = require('blakejs');
 var bs58check = require('bs58check');
-__export(require("./validators"));
+__exportStar(require("./validators"), exports);
 var constants_2 = require("./constants");
-exports.prefix = constants_2.prefix;
-exports.Prefix = constants_2.Prefix;
-exports.prefixLength = constants_2.prefixLength;
+Object.defineProperty(exports, "prefix", { enumerable: true, get: function () { return constants_2.prefix; } });
+Object.defineProperty(exports, "Prefix", { enumerable: true, get: function () { return constants_2.Prefix; } });
+Object.defineProperty(exports, "prefixLength", { enumerable: true, get: function () { return constants_2.prefixLength; } });
+/**
+ *
+ * @description Hash a string using the BLAKE2b algorithm, base58 encode the hash obtained and appends the prefix 'expr' to it
+ *
+ * @param value Value in hex
+ */
 function encodeExpr(value) {
     var blakeHash = blake.blake2b(exports.hex2buf(value), null, 32);
     return b58cencode(blakeHash, constants_1.prefix['expr']);
@@ -91,6 +105,12 @@ function encodePubKey(value) {
     return b58cencode(value.substring(2, 42), constants_1.prefix.KT);
 }
 exports.encodePubKey = encodePubKey;
+/**
+ *
+ * @description Base58 encode a key according to its prefix
+ *
+ * @param value Key to base58 encode
+ */
 function encodeKey(value) {
     if (value[0] === '0') {
         var pref = {
@@ -102,6 +122,12 @@ function encodeKey(value) {
     }
 }
 exports.encodeKey = encodeKey;
+/**
+ *
+ * @description Base58 encode a key hash according to its prefix
+ *
+ * @param value Key to base58 encode
+ */
 function encodeKeyHash(value) {
     if (value[0] === '0') {
         var pref = {
@@ -124,20 +150,6 @@ exports.hex2buf = function (hex) {
 };
 /**
  *
- * @description Generate a random hex nonce
- *
- * @param length length of the nonce
- */
-exports.hexNonce = function (length) {
-    var chars = '0123456789abcedf';
-    var hex = '';
-    while (length--) {
-        hex += chars[(Math.random() * 16) | 0];
-    }
-    return hex;
-};
-/**
- *
  * @description Merge 2 buffers together
  *
  * @param b1 First buffer
@@ -148,81 +160,6 @@ exports.mergebuf = function (b1, b2) {
     r.set(b1);
     r.set(b2, b1.length);
     return r;
-};
-/**
- *
- * @description Convert a michelson string expression to it's json representation
- *
- * @param mi Michelson string expression to convert to json
- */
-exports.sexp2mic = function me(mi) {
-    mi = mi
-        .replace(/(?:@[a-z_]+)|(?:#.*$)/gm, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-    if (mi.charAt(0) === '(')
-        mi = mi.slice(1, -1);
-    var pl = 0;
-    var sopen = false;
-    var escaped = false;
-    var ret = {
-        prim: '',
-        args: [],
-    };
-    var val = '';
-    for (var i = 0; i < mi.length; i++) {
-        if (escaped) {
-            val += mi[i];
-            escaped = false;
-            continue;
-        }
-        else if ((i === mi.length - 1 && sopen === false) ||
-            (mi[i] === ' ' && pl === 0 && sopen === false)) {
-            if (i === mi.length - 1)
-                val += mi[i];
-            if (val) {
-                if (val === parseInt(val, 10).toString()) {
-                    if (!ret.prim)
-                        return { int: val };
-                    ret.args.push({ int: val });
-                }
-                else if (val[0] === '0' && val[1] === 'x') {
-                    val = val.substr(2);
-                    if (!ret.prim)
-                        return { bytes: val };
-                    ret.args.push({ bytes: val });
-                }
-                else if (ret.prim) {
-                    ret.args.push(me(val));
-                }
-                else {
-                    ret.prim = val;
-                }
-                val = '';
-            }
-            continue;
-        }
-        else if (mi[i] === '"' && sopen) {
-            sopen = false;
-            if (!ret.prim)
-                return { string: val };
-            ret.args.push({ string: val });
-            val = '';
-            continue;
-        }
-        else if (mi[i] === '"' && !sopen && pl === 0) {
-            sopen = true;
-            continue;
-        }
-        else if (mi[i] === '\\')
-            escaped = true;
-        else if (mi[i] === '(')
-            pl++;
-        else if (mi[i] === ')')
-            pl--;
-        val += mi[i];
-    }
-    return ret;
 };
 /**
  *
@@ -277,88 +214,6 @@ exports.mic2arr = function me2(s) {
     }
     else {
         ret = s;
-    }
-    return ret;
-};
-/**
- *
- * @description Convert a michelson string to it's json representation
- *
- * @param mi Michelson string to convert to json
- *
- * @warn This implementation of the Michelson parser is a prototype. The current implementation is naïve. We are likely going to switch to using the Nomadic Michelson encoder in the future, as per Issue https://gitlab.com/tezos/tezos/issues/581
- */
-exports.ml2mic = function me(mi) {
-    var ret = [];
-    var inseq = false;
-    var seq = '';
-    var val = '';
-    var pl = 0;
-    var bl = 0;
-    var sopen = false;
-    var escaped = false;
-    for (var i = 0; i < mi.length; i++) {
-        if (val === '}' || val === ';') {
-            val = '';
-        }
-        if (inseq) {
-            if (mi[i] === '}') {
-                bl--;
-            }
-            else if (mi[i] === '{') {
-                bl++;
-            }
-            if (bl === 0) {
-                var st = me(val);
-                ret.push({
-                    prim: seq.trim(),
-                    args: [st],
-                });
-                val = '';
-                bl = 0;
-                inseq = false;
-            }
-        }
-        else if (mi[i] === '{') {
-            bl++;
-            seq = val;
-            val = '';
-            inseq = true;
-            continue;
-        }
-        else if (escaped) {
-            val += mi[i];
-            escaped = false;
-            continue;
-        }
-        else if ((i === mi.length - 1 && sopen === false) ||
-            (mi[i] === ';' && pl === 0 && sopen === false)) {
-            if (i === mi.length - 1)
-                val += mi[i];
-            if (val.trim() === '' || val.trim() === '}' || val.trim() === ';') {
-                val = '';
-                continue;
-            }
-            ret.push(exports.sexp2mic(val));
-            val = '';
-            continue;
-        }
-        else if (mi[i] === '"' && sopen) {
-            sopen = false;
-        }
-        else if (mi[i] === '"' && !sopen) {
-            sopen = true;
-        }
-        else if (mi[i] === '\\') {
-            escaped = true;
-        }
-        else if (mi[i] === '(') {
-            pl++;
-        }
-        else if (mi[i] === ')') {
-            pl--;
-        }
-        val += mi[i];
     }
     return ret;
 };

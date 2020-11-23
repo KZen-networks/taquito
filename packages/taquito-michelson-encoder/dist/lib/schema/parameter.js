@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.ParameterSchema = void 0;
 var createToken_1 = require("../tokens/createToken");
 var token_1 = require("../tokens/token");
 var or_1 = require("../tokens/or");
@@ -26,7 +27,7 @@ var ParameterSchema = /** @class */ (function () {
             return (this.root instanceof or_1.OrToken ||
                 (this.root instanceof option_1.OptionToken && this.root.subToken() instanceof or_1.OrToken));
         },
-        enumerable: true,
+        enumerable: false,
         configurable: true
     });
     Object.defineProperty(ParameterSchema.prototype, "hasAnnotation", {
@@ -38,7 +39,7 @@ var ParameterSchema = /** @class */ (function () {
                 return true;
             }
         },
-        enumerable: true,
+        enumerable: false,
         configurable: true
     });
     ParameterSchema.prototype.Execute = function (val, semantics) {

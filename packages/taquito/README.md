@@ -1,4 +1,4 @@
-[![pkgsign status](https://us-central1-pkgsign.cloudfunctions.net/pkgsign-badge?name=@taquito/taquito&expectedIdentity=%40simrob)](https://github.com/RedpointGames/pkgsign)
+[![pkgsign status](https://us-central1-pkgsign.cloudfunctions.net/pkgsign-badge?name=@taquito/taquito&expectedIdentity=%40jevonearth)](https://github.com/RedpointGames/pkgsign)
 
 # Taquito high level functions
 
@@ -7,8 +7,8 @@ The `@taquito/taquito` package contains higher level functionality that builds u
 ## CDN Bundle
 
 ```html
-<script src="https://unpkg.com/@taquito/taquito@6.1.0-beta.0/dist/taquito.min.js"
-crossorigin="anonymous" integrity="sha384-P4N1MRFVmItpzYavNtO+HlQO0DsUqv5y+2iELwAKCQscp36AyPZitY0dBbgmeS1J"></script>
+<script src="https://unpkg.com/@taquito/taquito@7.0.0-beta.0/dist/taquito.min.js"
+crossorigin="anonymous" integrity="sha384-RZiQYo14SL8QO7L6eGZOgqdt59Y1n2rNqmeqQaNy460S8BXxd7pr255cwlTdIgHU"></script>
 ```
 
 ## API Documentation

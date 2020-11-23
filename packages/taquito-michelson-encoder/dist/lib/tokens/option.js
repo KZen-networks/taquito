@@ -3,7 +3,7 @@ var __extends = (this && this.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
         return extendStatics(d, b);
     };
     return function (d, b) {
@@ -33,6 +33,7 @@ var __spread = (this && this.__spread) || function () {
     return ar;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.OptionToken = void 0;
 var token_1 = require("./token");
 var OptionToken = /** @class */ (function (_super) {
     __extends(OptionToken, _super);
@@ -54,8 +55,11 @@ var OptionToken = /** @class */ (function (_super) {
     OptionToken.prototype.Encode = function (args) {
         var value = args;
         if (value === undefined ||
-            value === null ||
-            (Array.isArray(value) && (value[0] === undefined || value[0] === null))) {
+            value === null) {
+            return { prim: 'None' };
+        }
+        else if ((Array.isArray(value) && (value[value.length - 1] === undefined || value[value.length - 1] === null))) {
+            value.pop();
             return { prim: 'None' };
         }
         var schema = this.createToken(this.val.args[0], 0);

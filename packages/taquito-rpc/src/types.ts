@@ -31,8 +31,6 @@ interface Frozenbalancebycycle {
 
 export type BigMapKey = { key: { [key: string]: string }; type: { prim: string } };
 
-// BlockResponse interface
-// header:
 export interface BlockFullHeader {
   level: number;
   proto: number;
@@ -126,7 +124,7 @@ export interface OperationContentsTransaction {
   storage_limit: string;
   amount: string;
   destination: string;
-  parameters?: MichelsonV1Expression;
+  parameters?: TransactionOperationParameter;
 }
 
 export interface OperationContentsOrigination {
@@ -231,7 +229,6 @@ export interface OperationContentsAndResultProposals {
   source: string;
   period: number;
   proposals: string[];
-  metadata: any;
 }
 
 export interface OperationContentsAndResultBallot {
@@ -240,7 +237,6 @@ export interface OperationContentsAndResultBallot {
   period: number;
   proposal: string;
   ballot: OperationContentsBallotEnum;
-  metadata: any;
 }
 
 export interface OperationContentsAndResultReveal {
@@ -263,7 +259,7 @@ export interface OperationContentsAndResultTransaction {
   storage_limit: string;
   amount: string;
   destination: string;
-  parameters?: MichelsonV1Expression;
+  parameters?: TransactionOperationParameter;
   metadata: OperationContentsAndResultMetadataTransaction;
 }
 
@@ -291,8 +287,6 @@ export type OperationContentsAndResult =
   | OperationContentsAndResultOrigination
   | OperationContentsAndResultDelegation;
 
-// BlockResponse interface
-// operations:
 export interface OperationEntry {
   protocol: string;
   chain_id: string;
@@ -463,10 +457,6 @@ export interface ScriptedContracts {
   storage: MichelsonV1Expression;
 }
 
-// BlockResponse interface
-// metadata: {
-//   balanceUpdates:
-// }
 export interface OperationBalanceUpdatesItem {
   kind: BalanceUpdateKindEnum;
   category?: BalanceUpdateCategoryEnum;
@@ -501,6 +491,7 @@ export interface OperationResultDelegation {
   status: OperationResultStatusEnum;
   consumed_gas?: string;
   errors?: TezosGenericOperationError[];
+  consumed_milligas?: string;
 }
 
 export interface ContractBigMapDiffItem {
@@ -527,12 +518,19 @@ export interface OperationResultTransaction {
   paid_storage_size_diff?: string;
   allocated_destination_contract?: boolean;
   errors?: TezosGenericOperationError[];
+  consumed_milligas?: string;
 }
 
 export interface OperationResultReveal {
   status: OperationResultStatusEnum;
   consumed_gas?: string;
   errors?: TezosGenericOperationError[];
+  consumed_milligas?: string;
+}
+
+export interface TransactionOperationParameter {
+  entrypoint: string;
+  value: MichelsonV1Expression;
 }
 
 export interface InternalOperationResult {
@@ -541,7 +539,7 @@ export interface InternalOperationResult {
   nonce: number;
   amount?: string;
   destination?: string;
-  parameters?: MichelsonV1Expression;
+  parameters?: TransactionOperationParameter;
   public_key?: string;
   balance?: string;
   delegate?: string;
@@ -571,6 +569,7 @@ export interface OperationResultOrigination {
   storage_size?: string;
   paid_storage_size_diff?: string;
   errors?: TezosGenericOperationError[];
+  consumed_milligas?: string;
 }
 
 export interface OperationContentsAndResultMetadataOrigination {
@@ -579,10 +578,18 @@ export interface OperationContentsAndResultMetadataOrigination {
   internal_operation_results?: InternalOperationResult[];
 }
 
-export interface ConstantsResponse {
+export type ConstantsResponse = 
+ConstantsResponseCommon & 
+ConstantsResponseProto007 &
+ConstantsResponseProto006 &
+ConstantsResponseProto005 &
+ConstantsResponseProto004 &
+ConstantsResponseProto003 &
+ConstantsResponseProto001And002;
+
+export interface ConstantsResponseCommon {
   proof_of_work_nonce_size: number;
   nonce_length: number;
-  max_revelations_per_block: number;
   max_operation_data_length: number;
   preserved_cycles: number;
   blocks_per_cycle: number;
@@ -596,25 +603,49 @@ export interface ConstantsResponse {
   proof_of_work_threshold: BigNumber;
   tokens_per_roll: BigNumber;
   michelson_maximum_type_size: number;
-  seed_nonce_revelation_tip: string;
-  origination_burn: string;
+  seed_nonce_revelation_tip: BigNumber;
   block_security_deposit: BigNumber;
   endorsement_security_deposit: BigNumber;
-  block_reward: BigNumber;
-  endorsement_reward: BigNumber;
+  endorsement_reward: BigNumber | BigNumber[]; // BigNumber[] since proto 006, BigNumber before
   cost_per_byte: BigNumber;
   hard_storage_limit_per_operation: BigNumber;
-  min_proposal_quorum?: number;
-  quorum_max?: number;
+}
+export interface ConstantsResponseProto007 extends Omit<ConstantsResponseProto006, 'max_revelations_per_block'> {
+  max_anon_ops_per_block?: number;
+}
+
+export interface ConstantsResponseProto006 extends Omit<ConstantsResponseProto005, 'block_reward'> {
+  baking_reward_per_endorsement?: BigNumber[];
+}
+
+export interface ConstantsResponseProto005 extends ConstantsResponseProto004 {
   quorum_min?: number;
-  delay_per_missing_endorsement?: number;
-  initial_endorsers?: string[];
+  quorum_max?: number;
+  min_proposal_quorum?: number;
+  initial_endorsers?: number;
+  delay_per_missing_endorsement?: BigNumber;
+}
+
+export interface ConstantsResponseProto004 extends ConstantsResponseProto003 {
+  test_chain_duration?: BigNumber;
+}
+
+export interface ConstantsResponseProto003 extends Omit<ConstantsResponseProto001And002, 'origination_burn'> {
+  origination_size?: number;
+  max_proposals_per_delegate?: number;
+}
+
+export interface ConstantsResponseProto001And002 {
+  max_revelations_per_block?: number;
+  origination_burn?: string;
+  block_reward?: BigNumber;
 }
 
 export interface ContractResponse {
   balance: BigNumber;
   script: ScriptedContracts;
   counter?: string;
+  delegate?: string;
 }
 
 export interface TestChainStatus {

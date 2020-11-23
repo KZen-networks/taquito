@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.createToken = exports.InvalidTokenError = void 0;
 var tokens_1 = require("./tokens");
 var InvalidTokenError = /** @class */ (function () {
     function InvalidTokenError(message, data) {

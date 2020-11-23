@@ -1,6 +1,12 @@
-/// <reference types="node" />
+import { Buffer } from 'buffer';
 export * from './validators';
 export { prefix, Prefix, prefixLength } from './constants';
+/**
+ *
+ * @description Hash a string using the BLAKE2b algorithm, base58 encode the hash obtained and appends the prefix 'expr' to it
+ *
+ * @param value Value in hex
+ */
 export declare function encodeExpr(value: string): any;
 /**
  *
@@ -32,7 +38,19 @@ export declare function b58decode(payload: string): string;
  * @param value Public Key to base58 encode
  */
 export declare function encodePubKey(value: string): any;
+/**
+ *
+ * @description Base58 encode a key according to its prefix
+ *
+ * @param value Key to base58 encode
+ */
 export declare function encodeKey(value: string): any;
+/**
+ *
+ * @description Base58 encode a key hash according to its prefix
+ *
+ * @param value Key to base58 encode
+ */
 export declare function encodeKeyHash(value: string): any;
 /**
  *
@@ -43,13 +61,6 @@ export declare function encodeKeyHash(value: string): any;
 export declare const hex2buf: (hex: string) => Uint8Array;
 /**
  *
- * @description Generate a random hex nonce
- *
- * @param length length of the nonce
- */
-export declare const hexNonce: (length: number) => string;
-/**
- *
  * @description Merge 2 buffers together
  *
  * @param b1 First buffer
@@ -58,27 +69,11 @@ export declare const hexNonce: (length: number) => string;
 export declare const mergebuf: (b1: Uint8Array, b2: Uint8Array) => Uint8Array;
 /**
  *
- * @description Convert a michelson string expression to it's json representation
- *
- * @param mi Michelson string expression to convert to json
- */
-export declare const sexp2mic: (mi: string) => any;
-/**
- *
  * @description Flatten a michelson json representation to an array
  *
  * @param s michelson json
  */
 export declare const mic2arr: (s: any) => any;
-/**
- *
- * @description Convert a michelson string to it's json representation
- *
- * @param mi Michelson string to convert to json
- *
- * @warn This implementation of the Michelson parser is a prototype. The current implementation is naïve. We are likely going to switch to using the Nomadic Michelson encoder in the future, as per Issue https://gitlab.com/tezos/tezos/issues/581
- */
-export declare const ml2mic: (mi: string) => any;
 /**
  *
  * @description Convert a buffer to an hex string

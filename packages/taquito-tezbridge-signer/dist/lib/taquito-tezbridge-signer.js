@@ -36,6 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.TezBridgeSigner = void 0;
 var utils_1 = require("@taquito/utils");
 var typedarray_to_buffer_1 = require("typedarray-to-buffer");
 var TezBridgeSigner = /** @class */ (function () {

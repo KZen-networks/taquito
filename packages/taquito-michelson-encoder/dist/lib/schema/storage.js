@@ -10,17 +10,21 @@ var __assign = (this && this.__assign) || function () {
     };
     return __assign.apply(this, arguments);
 };
+var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Schema = void 0;
 var bigmap_1 = require("../tokens/bigmap");
 var createToken_1 = require("../tokens/createToken");
 var or_1 = require("../tokens/or");
 var pair_1 = require("../tokens/pair");
 var token_1 = require("../tokens/token");
+var schemaTypeSymbol = Symbol.for('taquito-schema-type-symbol');
 /**
  * @warn Our current smart contract abstraction feature is currently in preview. It's API is not final, and it may not cover every use case (yet). We will greatly appreciate any feedback on this feature.
  */
 var Schema = /** @class */ (function () {
     function Schema(val) {
+        this[_a] = true;
         this.root = createToken_1.createToken(val, 0);
         if (this.root instanceof bigmap_1.BigMapToken) {
             this.bigMap = this.root;
@@ -32,6 +36,9 @@ var Schema = /** @class */ (function () {
             }
         }
     }
+    Schema.isSchema = function (obj) {
+        return obj && obj[schemaTypeSymbol] === true;
+    };
     Schema.fromRPCResponse = function (val) {
         var storage = val &&
             val.script &&
@@ -74,8 +81,8 @@ var Schema = /** @class */ (function () {
         if (!Array.isArray(diff)) {
             throw new Error('Invalid big map diff. It must be an array');
         }
-        var eltFormat = diff.map(function (_a) {
-            var key = _a.key, value = _a.value;
+        var eltFormat = diff.map(function (_b) {
+            var key = _b.key, value = _b.value;
             return ({ args: [key, value] });
         });
         return this.bigMap.Execute(eltFormat, semantics);
@@ -115,7 +122,7 @@ var Schema = /** @class */ (function () {
      * @deprecated
      */
     Schema.prototype.ComputeState = function (tx, state) {
-        var _a;
+        var _b;
         var _this = this;
         if (!this.bigMap) {
             throw new Error('No big map schema');
@@ -123,9 +130,10 @@ var Schema = /** @class */ (function () {
         var bigMap = tx.reduce(function (prev, current) {
             return __assign(__assign({}, prev), _this.ExecuteOnBigMapDiff(current.contents[0].metadata.operation_result.big_map_diff));
         }, {});
-        return __assign(__assign({}, this.Execute(state)), (_a = {}, _a[this.bigMap.annot()] = bigMap, _a));
+        return __assign(__assign({}, this.Execute(state)), (_b = {}, _b[this.bigMap.annot()] = bigMap, _b));
     };
     return Schema;
 }());
 exports.Schema = Schema;
+_a = schemaTypeSymbol;
 //# sourceMappingURL=storage.js.map

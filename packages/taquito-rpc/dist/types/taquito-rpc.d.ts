@@ -15,14 +15,14 @@ export declare class RpcClient {
     private httpBackend;
     /**
      *
-     * @param url rpc root url (default https://mainnet.tezrpc.me)
+     * @param url rpc root url
      * @param chain chain (default main)
      * @param httpBackend Http backend that issue http request.
      * You can override it by providing your own if you which to hook in the request/response
      *
-     * @example new RpcClient('https://mainnet.tezrpc.me', 'main') this will use https://mainnet.tezrpc.me/chains/main
+     * @example new RpcClient('https://api.tez.ie/rpc/mainnet', 'main') this will use https://api.tez.ie/rpc/mainnet/chains/main
      */
-    constructor(url?: string, chain?: string, httpBackend?: HttpBackend);
+    constructor(url: string, chain?: string, httpBackend?: HttpBackend);
     private createURL;
     /**
      *
@@ -33,6 +33,15 @@ export declare class RpcClient {
      * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-hash
      */
     getBlockHash({ block }?: RPCOptions): Promise<string>;
+    /**
+     *
+     * @param options contains generic configuration for rpc calls
+     *
+     * @description List the ancestors of the given block which, if referred to as the branch in an operation header, are recent enough for that operation to be included in the current block.
+     *
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-live-blocks
+     */
+    getLiveBlocks({ block }?: RPCOptions): Promise<string[]>;
     /**
      *
      * @param address address from which we want to retrieve the balance
@@ -110,7 +119,9 @@ export declare class RpcClient {
      *
      * @description Access the value associated with a key in the big map storage of the contract.
      *
-     * @see https://tezos.gitlab.io/api/rpc.html#post-block-id-context-contracts-contract-id-big-map-get
+     * @deprecated Deprecated in favor of getBigMapKeyByID
+     *
+     * @see https://tezos.gitlab.io/api/rpc.html#get-block-id-context-contracts-contract-id-script
      */
     getBigMapKey(address: string, key: BigMapKey, { block }?: {
         block: string;
@@ -151,11 +162,14 @@ export declare class RpcClient {
     getConstants({ block }?: RPCOptions): Promise<ConstantsResponse>;
     /**
      *
-     * @param options contains generic configuration for rpc calls
+     * @param options contains generic configuration for rpc calls. See examples for various available sytaxes.
      *
      * @description All the information about a block
      *
      * @see https://tezos.gitlab.io/api/rpc.html#get-block-id
+     * @example getBlock() will default to /main/chains/block/head.
+     * @example getBlock({ block: head~2 }) will return an offset of 2 blocks.
+     * @example getBlock({ block: BL8fTiWcSxWCjiMVnDkbh6EuhqVPZzgWheJ2dqwrxYRm9AephXh~2 }) will return an offset of 2 blocks from given block hash..
      */
     getBlock({ block }?: RPCOptions): Promise<BlockResponse>;
     /**
@@ -323,4 +337,9 @@ export declare class RpcClient {
         packed: string;
         gas: BigNumber | "unaccounted" | undefined;
     }>;
+    /**
+     *
+     * @description Return rpc root url
+     */
+    getRpcUrl(): string;
 }
